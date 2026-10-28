@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Study Library</title>
+<style>
+:root{
+  --bg:#f5f6f8;--panel:#ffffff;--ink:#16181d;--muted:#6b7280;--line:#e5e7eb;
+  --accent:#2f6bff;--accent-ink:#ffffff;--accent-soft:#e8efff;
+  --good:#16a34a;--warn:#d97706;--bad:#dc2626;--shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+  --warnbg:#fff4e0;--warnline:#f3d39b;--warnink:#8a5200;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1115;--panel:#181b21;--ink:#eceef2;--muted:#9aa3b2;--line:#272b33;
+  --accent:#6b93ff;--accent-ink:#0b1020;--accent-soft:#1c2540;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  --warnbg:#3a2c10;--warnline:#5b4519;--warnink:#f2c47a}
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:flex;min-height:100vh}
+nav{width:230px;flex:none;padding:22px 14px;border-right:1px solid var(--line);background:var(--panel);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em;padding:0 10px 10px}
+.brand small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+.subjsel{margin:0 0 12px;padding:0 4px}
+.subjsel label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 6px 4px}
+select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px}
+nav button.nv{all:unset;cursor:pointer;padding:10px 12px;border-radius:10px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+nav button.nv:hover{background:var(--bg);color:var(--ink)}
+nav button.nv.on{background:var(--accent-soft);color:var(--accent)}
+.pill{background:var(--accent);color:var(--accent-ink);border-radius:999px;font-size:12px;padding:1px 8px;font-weight:600}
+main{flex:1;padding:34px clamp(18px,4vw,56px);max-width:980px;margin:0 auto;width:100%}
+h1{font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
+h2{font-size:17px;margin:28px 0 12px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.card,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.stat{padding:18px}
+.stat b{display:block;font-size:30px;letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:13px}
+.btn{all:unset;cursor:pointer;background:var(--accent);color:var(--accent-ink);padding:11px 20px;border-radius:12px;font-weight:600;text-align:center}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:7px 12px;font-size:14px;border-radius:10px}
+.btn.danger{background:var(--bad);color:#fff}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sp{flex:1}
+.area{padding:14px 16px;display:flex;flex-direction:column;gap:8px;cursor:pointer;margin-bottom:10px}
+.area:hover{border-color:var(--accent)}
+.area .top{display:flex;justify-content:space-between;gap:12px}
+.area .top span{color:var(--muted);font-size:13px}
+.bar{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:99px}
+.bar .seen{background:var(--accent-soft);filter:saturate(1.4)}
+.bar .solid{background:var(--accent)}
+.legend{color:var(--muted);font-size:13px;margin:-4px 0 12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted);white-space:nowrap}
+.chip.verify{background:var(--warnbg);border-color:var(--warnline);color:var(--warnink)}
+.chip.ok{color:var(--good)}
+.chip.due{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+/* study */
+.study{max-width:740px;margin:0 auto}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin-bottom:10px;gap:12px}
+.chiprow{margin-bottom:12px}
+.scene{perspective:1400px}
+.flipper{display:grid;transition:transform .55s cubic-bezier(.3,.7,.2,1);transform-style:preserve-3d;cursor:pointer}
+.flipper.flipped{transform:rotateY(180deg)}
+.face{grid-area:1/1;min-height:270px;padding:30px clamp(18px,4vw,38px);display:flex;flex-direction:column;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px}
+.face.bk{transform:rotateY(180deg);background:var(--panel)}
+.face .tag{position:absolute;top:14px;left:20px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.face{position:relative}
+.front{font-size:clamp(20px,2.6vw,27px);font-weight:600;letter-spacing:-.015em;line-height:1.3;white-space:pre-wrap}
+.ans{font-size:clamp(17px,2.2vw,21px);white-space:pre-wrap;line-height:1.45}
+.tap{text-align:center;color:var(--muted);font-size:13px;margin-top:10px}
+.below{margin-top:18px;animation:in .3s ease-out}
+.below[hidden]{display:none}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.rates{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.rate{all:unset;cursor:pointer;text-align:center;padding:12px 6px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-weight:600}
+.rate small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.rate:hover{border-color:var(--accent)}
+.rate.r1{color:var(--bad)}.rate.r2{color:var(--warn)}.rate.r3{color:var(--good)}.rate.r4{color:var(--accent)}
+.panel{margin-top:14px;padding:16px 18px}
+.panel .hd{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.panel ul{margin:0;padding-left:18px}
+.panel + .panel{margin-top:12px}
+.src{color:var(--muted);font-size:14px}
+.vbox{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--warnbg);border:1px solid var(--warnline);color:var(--warnink);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:14px}
+.hint{text-align:center;color:var(--muted);font-size:13px;margin-top:14px}
+kbd{font:12px ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+textarea,input[type=text],input[type=number],input[type=search],input[type=date]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{min-height:76px;resize:vertical}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+/* lists */
+.list .item{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.list .item:last-child{border-bottom:0}
+.list .item.click{cursor:pointer}
+.list .item.click:hover{background:var(--bg)}
+.list .main{flex:1;min-width:0}
+.list .t{font-weight:500;white-space:pre-wrap;overflow-wrap:anywhere}
+.list .m{color:var(--muted);font-size:13px;margin-top:2px}
+.list input[type=checkbox]{margin-top:5px;width:17px;height:17px;accent-color:var(--accent)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.tab{all:unset;cursor:pointer;padding:5px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px;color:var(--muted);background:var(--panel)}
+.tab.on{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.banner{background:var(--warnbg);border:1px solid var(--warnline);color:var(--warnink);border-radius:12px;padding:12px 16px;margin-bottom:18px;font-size:14px}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+#toast.show{opacity:1}
+.label{display:block;font-weight:600;margin:16px 0 6px}
+.label small{font-weight:400;color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.spark{display:flex;gap:4px;align-items:flex-end;height:46px;margin-top:8px}
+.spark i{flex:1;background:var(--accent);border-radius:3px;min-height:3px;opacity:.85}
+.spark i.z{background:var(--line);opacity:1}
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto;z-index:40}
+#modal.on{display:flex}
+#modal .box{background:var(--panel);border-radius:18px;border:1px solid var(--line);box-shadow:var(--shadow);width:100%;max-width:620px;padding:22px}
+#modal h2{margin:0 0 4px}
+.check{display:flex;gap:8px;align-items:center;margin-top:14px}
+.check input{width:17px;height:17px;accent-color:var(--accent)}
+@media (max-width:760px){
+  .app{flex-direction:column}
+  nav{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:12px;border-right:0;border-bottom:1px solid var(--line)}
+  .brand{width:100%;padding:0 6px 6px}
+  .subjsel{width:100%}
+  .rates{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.flipper{transition:none}.below{animation:none}}
+.pill.warn{background:var(--warn);color:#fff}
+nav button.nv kbd{margin-left:auto}
+.selbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;margin-bottom:16px}
+.selbar .selt{font-size:14px}
+.selbar .lbl{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:11px;margin-right:4px}
+.selbar .chips{flex:1;min-width:160px}
+.links{margin:0;padding-left:18px}
+.links a,.panel a{color:var(--accent);overflow-wrap:anywhere}
+label.item{cursor:pointer}
+label.item:hover{background:var(--bg)}
+.check input[type=radio]{width:17px;height:17px;accent-color:var(--accent)}
+strong{font-weight:800}
+.front strong,.ans strong{color:var(--accent)}
+.gmenu{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.gcard{padding:18px;display:flex;flex-direction:column;gap:8px}
+.gcard h3{margin:0;font-size:18px;letter-spacing:-.01em}
+.gcard p{margin:0;color:var(--muted);font-size:14px}
+.gcard .m{color:var(--muted);font-size:13px}
+.gcard .btn{align-self:flex-start;margin-top:4px}
+.scl{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.gtop{display:flex;gap:16px;align-items:baseline;margin-bottom:10px}
+.gtop #gtime{font-size:26px;font-weight:700;letter-spacing:-.02em;min-width:56px}
+.gtop .gs{color:var(--muted);font-size:14px}.gtop .gs b{color:var(--ink)}
+.gbarw{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:16px}
+.gbarw i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .1s linear}
+.gq{padding:24px clamp(16px,4vw,32px);margin-bottom:14px}
+.gopts{display:grid;gap:10px}
+.gopt{all:unset;cursor:pointer;box-sizing:border-box;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel);display:block;line-height:1.4}
+.gopt:hover{border-color:var(--accent)}
+.gopt kbd{margin-right:8px}
+.gopt.good{border-color:var(--good);background:rgba(22,163,74,.12)}
+.gopt.bad{border-color:var(--bad);background:rgba(220,38,38,.12)}
+.gopt[disabled]{cursor:default}
+.gwhy{margin:-4px 4px 6px;color:var(--muted);font-size:14px}
+.mcols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.mcols>div{display:grid;gap:10px}
+.mbtn{all:unset;cursor:pointer;box-sizing:border-box;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);line-height:1.35;font-size:15px}
+.mbtn:hover{border-color:var(--accent)}
+.mbtn.sel{border-color:var(--accent);background:var(--accent-soft)}
+.mbtn.done{opacity:.35;border-color:var(--good);cursor:default}
+.mbtn.bad{border-color:var(--bad);background:rgba(220,38,38,.12)}
+@media (max-width:760px){.mcols{gap:8px}.mbtn{font-size:14px;padding:10px}}
+
+</style>
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Study"></head>
+<body>
+<div class="app">
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div id="modal"></div>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".json,application/json" multiple hidden>
+<script>
+(function(){
+'use strict';
+var DAY=86400000;
+var KEY='checkride-study-v1',SNAPKEY='checkride-study-snap',UNDOKEY='checkride-study-before-restore',VER=3;
+
+/* ---------- storage ---------- */
+function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed'},daily:{date:'',newCount:0},history:{},lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
+function migrate(s){
+  var base=defaults();for(var k in s)base[k]=s[k];
+  var df=defaults().settings;if(!base.settings||typeof base.settings!=='object')base.settings={};
+  for(var q in df)if(base.settings[q]===undefined)base.settings[q]=df[q];
+  if(!base.sel||typeof base.sel!=='object')base.sel={};
+  if(!base.sets||typeof base.sets!=='object')base.sets={};
+  s=base;
+  var ids=Object.keys(s.decks),orphan=ids.filter(function(i){return !s.decks[i].subject;});
+  if(orphan.length){
+    if(!s.subjects['private-pilot'])s.subjects['private-pilot']={id:'private-pilot',name:'Private Pilot',examDate:''};
+    orphan.forEach(function(i){s.decks[i].subject='private-pilot';});
+  }
+  var sk=Object.keys(s.subjects);
+  if(!s.currentSubject||!s.subjects[s.currentSubject])s.currentSubject=sk[0]||'';
+  s.v=VER;return s;
+}
+var loadWarn='',readOnly=false;
+function load(){
+  var r=null;
+  try{r=localStorage.getItem(KEY);}catch(e){}
+  if(r){
+    try{
+      var o=JSON.parse(r),v=o.v||1;
+      if(v>VER){readOnly=true;loadWarn='This data was saved by a newer version of the app. Open the newer version; changes made here will not be saved.';}
+      else if(v<VER){try{localStorage.setItem(KEY+'-before-v'+VER,r);}catch(e1){}}
+      return migrate(o);
+    }catch(e2){
+      try{localStorage.setItem(KEY+'-corrupt',r);}catch(e3){}
+      loadWarn='Your saved data could not be read, so the app started empty. A copy of the damaged data was kept in this browser. Restore a backup file from Settings.';
+    }
+  }
+  return migrate(defaults());
+}
+var S=load();
+function save(){
+  if(readOnly)return;
+  try{localStorage.setItem(KEY,JSON.stringify(S));}
+  catch(e){toast('Could not save. Browser storage may be full or blocked. Export a backup now.');}
+}
+/* a daily snapshot of the state at the start of the day; keeps the last three */
+function snapshot(){
+  try{
+    if(readOnly||!Object.keys(S.decks).length)return;
+    var arr=JSON.parse(localStorage.getItem(SNAPKEY)||'[]'),t=isoToday();
+    if(arr.length&&arr[arr.length-1].date===t)return;
+    arr.push({date:t,data:JSON.stringify(S)});
+    while(arr.length>3)arr.shift();
+    try{localStorage.setItem(SNAPKEY,JSON.stringify(arr));}
+    catch(e){try{localStorage.setItem(SNAPKEY,JSON.stringify(arr.slice(-1)));}catch(e2){}}
+  }catch(e3){}
+}
+function getSnaps(){try{return JSON.parse(localStorage.getItem(SNAPKEY)||'[]');}catch(e){return [];}}
+var persistState='unknown';
+function checkPersist(){
+  if(!(navigator.storage&&navigator.storage.persisted)){persistState='unsupported';return;}
+  navigator.storage.persisted().then(function(p){
+    if(p){persistState='granted';return;}
+    persistState='not-granted';
+    if(navigator.storage.persist)return navigator.storage.persist().then(function(g){persistState=g?'granted':'denied';});
+  }).then(function(){if(view==='settings')render();}).catch(function(){persistState='unsupported';});
+}
+
+/* ---------- helpers ---------- */
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function today(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show');},3200);}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';}
+function fmtInt(ms){
+  var m=Math.round(ms/60000);
+  if(m<60)return Math.max(1,m)+'m';
+  var h=Math.round(m/60);if(h<24)return h+'h';
+  var d=Math.round(h/24);if(d<30)return d+'d';
+  return Math.round(d/30)+'mo';
+}
+function uid(){return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function fmt(s){return esc(s).replace(/\*\*([^*]+?)\*\*/g,'<strong>$1</strong>');}
+function plain(s){return String(s==null?'':s).replace(/\*\*/g,'');}
+function toggleBold(id){
+  var t=$(id);if(!t)return;
+  var a=t.selectionStart,b=t.selectionEnd,v=t.value;
+  if(a===b){toast('Select the text first, then press Bold.');return;}
+  var sel=v.slice(a,b),wrapped=sel.length>4&&sel.slice(0,2)==='**'&&sel.slice(-2)==='**';
+  var ns=wrapped?sel.slice(2,-2):'**'+sel+'**';
+  t.value=v.slice(0,a)+ns+v.slice(b);t.focus();t.setSelectionRange(a,a+ns.length);
+}
+function isoToday(){var d=new Date(),p=function(n){return (n<10?'0':'')+n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function safeUrl(u){return /^https?:\/\//i.test(String(u||''))?String(u):'';}
+function ytSearch(q){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q);}
+function normLinks(arr){
+  var out=[];if(!Array.isArray(arr))return out;
+  arr.forEach(function(l){
+    if(!l||typeof l!=='object')return;
+    var url=safeUrl(l.url),label=typeof l.label==='string'?l.label.trim():'';
+    if(!url&&typeof l.q==='string'&&l.q.trim()){url=ytSearch(l.q.trim());if(!label)label='YouTube search: '+l.q.trim();}
+    if(url)out.push({label:label||url.replace(/^https?:\/\/(www\.)?/i,'').split('/')[0],url:url});
+  });
+  return out;
+}
+function parseLinks(text){
+  var arr=[],bad=0;
+  String(text).split('\n').forEach(function(ln){
+    ln=ln.trim();if(!ln)return;
+    var m=/^search:\s*(.+)$/i.exec(ln);
+    if(m){arr.push({q:m[1]});return;}
+    var i=ln.lastIndexOf('|'),label='',url=ln;
+    if(i>=0){label=ln.slice(0,i).trim();url=ln.slice(i+1).trim();}
+    if(safeUrl(url))arr.push({label:label,url:url});else bad++;
+  });
+  return {links:normLinks(arr),bad:bad};
+}
+function fmtLinks(links){return (links||[]).map(function(l){return l.label+' | '+l.url;}).join('\n');}
+function stale(c){
+  if(!c.volatile)return false;
+  if(!c.checked)return true;
+  return (Date.now()-new Date(c.checked+'T00:00:00').getTime())/DAY>((S.settings.staleDays|0)||180);
+}
+function attn(c){return !!c.verify||stale(c);}
+function hay(c){return [c.front,c.back,c.area,c.task,c.acs,c.source,c.page,S.notes[c.key]||'',(c.links||[]).map(function(l){return l.label;}).join(' ')].join(' ').toLowerCase();}
+
+/* ---------- subjects & cards ---------- */
+function subj(){return S.subjects[S.currentSubject]||null;}
+function areaOf(c){return c.area||'General';}
+function applyOv(c,key){
+  var o={};for(var k in c)o[k]=c[k];
+  o.key=key;o.deckId=key.slice(0,key.indexOf(':'));
+  var ov=S.overrides[key];
+  if(ov){for(var f in ov)o[f]=ov[f];o.edited=Object.keys(ov).some(function(f){return f!=='verify'&&f!=='checked';});o.hasOv=true;}
+  return o;
+}
+function cardsInSubject(sid){
+  var out=[];
+  Object.keys(S.decks).forEach(function(id){
+    var d=S.decks[id];if(d.subject!==sid)return;
+    d.cards.forEach(function(c){out.push(applyOv(c,id+':'+c.id));});
+  });
+  return out;
+}
+function allCards(){return cardsInSubject(S.currentSubject);}
+/* decks chosen for study: a saved selection (may span subjects) or every deck in the current subject */
+function selIds(){
+  var sel=S.sel[S.currentSubject];
+  if(sel&&sel.length){var ok=sel.filter(function(i){return S.decks[i];});if(ok.length)return ok;}
+  return Object.keys(S.decks).filter(function(i){return S.decks[i].subject===S.currentSubject;});
+}
+function isCustomSel(){var s=S.sel[S.currentSubject];return !!(s&&s.length&&s.some(function(i){return S.decks[i];}));}
+function activeCards(){
+  var out=[];
+  selIds().forEach(function(id){S.decks[id].cards.forEach(function(c){out.push(applyOv(c,id+':'+c.id));});});
+  return out;
+}
+function getCard(key){
+  var i=key.indexOf(':'),d=S.decks[key.slice(0,i)];if(!d)return null;
+  var id=key.slice(i+1);
+  for(var j=0;j<d.cards.length;j++)if(d.cards[j].id===id)return applyOv(d.cards[j],key);
+  return null;
+}
+function updateCard(key,patch){
+  var i=key.indexOf(':'),d=S.decks[key.slice(0,i)],id=key.slice(i+1);
+  if(d.custom){
+    for(var j=0;j<d.cards.length;j++)if(d.cards[j].id===id){for(var f in patch)d.cards[j][f]=patch[f];}
+  }else{
+    var ov=S.overrides[key]||{};for(var f2 in patch)ov[f2]=patch[f2];S.overrides[key]=ov;
+  }
+  save();
+}
+function myDeck(sid){
+  var id='my-'+sid;
+  if(!S.decks[id])S.decks[id]={id:id,title:'My cards',standard:'Cards I wrote',subject:sid,custom:true,cards:[]};
+  return S.decks[id];
+}
+
+/* ---------- scheduling ---------- */
+function schedule(p,r){
+  var now=Date.now();
+  var s=p?{ease:p.ease,interval:p.interval,reps:p.reps,lapses:p.lapses}:{ease:2.5,interval:0,reps:0,lapses:0};
+  if(r===1){s.lapses++;s.ease=Math.max(1.3,s.ease-0.2);s.interval=0;s.reps=0;s.due=now+10*60000;}
+  else{
+    if(r===2){s.ease=Math.max(1.3,s.ease-0.15);s.interval=s.interval<1?1:Math.max(1,Math.round(s.interval*1.2));}
+    else if(r===3){s.interval=s.interval<1?1:(s.reps===1?3:Math.max(s.interval+1,Math.round(s.interval*s.ease)));}
+    else{s.ease=s.ease+0.15;s.interval=s.interval<1?4:Math.max(s.interval+2,Math.round(s.interval*s.ease*1.3));}
+    s.reps++;s.due=now+s.interval*DAY;
+  }
+  return s;
+}
+function newLeft(){var used=(S.daily.date===today())?S.daily.newCount:0;return Math.max(0,(S.settings.newPerDay|0)-used);}
+function interleave(cards){
+  var g={},order=[];
+  cards.forEach(function(c){if(!g[c.deckId]){g[c.deckId]=[];order.push(c.deckId);}g[c.deckId].push(c);});
+  var out=[],more=true,i=0;
+  while(more){more=false;order.forEach(function(d){if(g[d][i]){out.push(g[d][i]);more=true;}});i++;}
+  return out;
+}
+function dueQueue(cards){
+  var now=Date.now(),mixed=S.settings.mix!=='deck';
+  var due=cards.filter(function(c){var p=S.progress[c.key];return p&&p.due<=now;}).sort(function(a,b){
+    if(!mixed&&a.deckId!==b.deckId)return a.deckId<b.deckId?-1:1;
+    return S.progress[a.key].due-S.progress[b.key].due;});
+  var fresh=cards.filter(function(c){return !S.progress[c.key];});
+  if(mixed)fresh=interleave(fresh);
+  return due.concat(fresh.slice(0,newLeft()));
+}
+function isWeak(c){var p=S.progress[c.key];return !!p&&(p.lapses>0&&p.interval<7);}
+function stateOf(c){
+  var p=S.progress[c.key];if(!p)return 'new';
+  if(p.due<=Date.now())return 'due';
+  return p.interval>=3?'solid':'learning';
+}
+
+/* ---------- state ---------- */
+var view='home',session=null,vq=null,pick=null;
+var lib={topic:null,filter:'all',q:'',sel:{}};
+var navEl=$('nav'),mainEl=$('main');
+
+/* ---------- render ---------- */
+function render(){if(view!=='games')stopGame();renderNav();
+  if(!Object.keys(S.subjects).length&&view!=='settings'){renderWelcome();return;}
+  if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else renderSettings();
+}
+function renderNav(){
+  var h='<div class="brand">Study Library<small>Local &middot; offline &middot; private</small></div>';
+  var sk=Object.keys(S.subjects);
+  h+='<div class="subjsel"><label>Subject</label><select id="subjSel">';
+  sk.forEach(function(k){h+='<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';});
+  h+='<option value="__new">+ New subject...</option></select></div>';
+  var q=sk.length?dueQueue(activeCards()).length:0,vc=sk.length?allCards().filter(attn).length:0;
+  [['home','Home'],['study','Study'],['games','Games'],['verify','Verify queue'],['library','Library'],['settings','Settings']].forEach(function(it){
+    var n=it[0]==='study'?q:(it[0]==='verify'?vc:0);
+    h+='<button class="nv '+(view===it[0]?'on':'')+'" data-act="nav" data-v="'+it[0]+'">'+it[1]+(n?'<span class="pill'+(it[0]==='verify'?' warn':'')+'">'+n+'</span>':'')+'</button>';
+  });
+  h+='<button class="nv" data-act="search">Search<kbd>/</kbd></button>';
+  h+='<button class="nv" data-act="help">Shortcuts<kbd>?</kbd></button>';
+  navEl.innerHTML=h;
+}
+function backupBanner(){
+  var w=loadWarn?'<div class="banner">'+esc(loadWarn)+'</div>':'';
+  if(!Object.keys(S.progress).length&&!Object.keys(S.notes).length&&!Object.keys(S.overrides).length)return w;
+  if(Date.now()-(S.lastBackup||0)>3*DAY)w+='<div class="banner">'+(S.lastBackup?'Your last backup was '+Math.floor((Date.now()-S.lastBackup)/DAY)+' days ago.':'You have not made a backup yet.')+' Go to Settings and export one. Your progress lives only in this browser.</div>';
+  return w;
+}
+function selbar(q){
+  var ids=selIds(),custom=isCustomSel(),per={};
+  (q||[]).forEach(function(c){per[c.deckId]=(per[c.deckId]||0)+1;});
+  var h='<div class="card selbar"><div class="selt"><span class="lbl">Studying</span> '+(custom?ids.length+' selected deck'+(ids.length===1?'':'s'):'all '+ids.length+' deck'+(ids.length===1?'':'s')+' in this subject')+'</div><div class="chips">';
+  ids.slice(0,8).forEach(function(i){h+='<span class="chip">'+esc(S.decks[i].title)+(per[i]?' &middot; '+per[i]:'')+'</span>';});
+  if(ids.length>8)h+='<span class="chip">+'+(ids.length-8)+' more</span>';
+  return h+'</div><button class="btn ghost small" data-act="pickdecks">Choose decks</button></div>';
+}
+function renderWelcome(){
+  mainEl.innerHTML=backupBanner()+'<h1>Welcome</h1><p class="sub">Create a subject (for example "Private Pilot" or "Accounting 201"), then import decks or write your own cards.</p>'+
+    '<div class="card empty"><div class="row" style="justify-content:center"><button class="btn" data-act="newsubj">Create a subject</button><button class="btn ghost" data-act="import">Import a deck file</button></div></div>';
+}
+
+function streak(){
+  var n=0,d=new Date();
+  function key(x){return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate();}
+  if(!S.history[key(d)])d=new Date(d.getTime()-DAY);
+  while(S.history[key(d)]){n++;d=new Date(d.getTime()-DAY);}
+  return n;
+}
+function renderHome(){
+  var cards=activeCards(),sb=subj();
+  var h='<h1>'+esc(sb.name)+'</h1>';
+  if(!cards.length){
+    mainEl.innerHTML=h+'<p class="sub">No cards in this subject yet.</p><div class="card empty"><div class="row" style="justify-content:center"><button class="btn" data-act="import">Import a deck</button><button class="btn ghost" data-act="addcard">Write a card</button></div></div>';return;
+  }
+  var now=Date.now(),due=0,seen=0,solid=0,verify=0,weak=0,areas={};
+  cards.forEach(function(c){
+    var p=S.progress[c.key],a=areaOf(c);if(!areas[a])areas[a]={n:0,seen:0,solid:0};
+    areas[a].n++;
+    if(p){seen++;areas[a].seen++;if(p.due<=now)due++;if(p.interval>=3){solid++;areas[a].solid++;}}
+    if(attn(c))verify++;if(isWeak(c))weak++;
+  });
+  var q=dueQueue(cards);
+  var sub=q.length?q.length+' cards in today\'s session.':'You are all caught up for now.';
+  if(sb.examDate){
+    var dl=Math.ceil((new Date(sb.examDate+'T00:00:00')-new Date())/DAY),unseen=cards.length-seen;
+    if(dl>=0){
+      var per=Math.ceil(unseen/Math.max(1,dl));
+      sub=(dl===0?'Exam day. ':dl+' day'+(dl===1?'':'s')+' until your exam. ')+sub+(unseen?' To see every new card by then: about '+per+' new per day (your setting is '+(S.settings.newPerDay|0)+').':'');
+    }
+  }
+  h+='<p class="sub">'+esc(sub)+'</p>'+backupBanner()+selbar(q);
+  h+='<div class="grid"><div class="stat"><b>'+q.length+'</b><span>to study now</span></div><div class="stat"><b>'+due+'</b><span>due for review</span></div>'+
+     '<div class="stat"><b>'+seen+' / '+cards.length+'</b><span>cards seen</span></div><div class="stat"><b>'+solid+'</b><span>solid (3+ day interval)</span></div>'+
+     '<div class="stat"><b>'+streak()+'</b><span>day streak</span></div></div>';
+  h+='<div class="row" style="margin-top:18px"><button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button>'+
+     '<button class="btn ghost" data-act="cram">Practice all (shuffled)</button>'+
+     '<button class="btn ghost" data-act="weak"'+(weak?'':' disabled')+'>Weak cards ('+weak+')</button>'+
+     '<button class="btn ghost" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button></div>';
+  // 14 day activity
+  var bars='',max=1,vals=[];
+  for(var i=13;i>=0;i--){var d=new Date(Date.now()-i*DAY),k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),v=S.history[k]||0;vals.push(v);if(v>max)max=v;}
+  vals.forEach(function(v){bars+='<i class="'+(v?'':'z')+'" style="height:'+(v?Math.max(8,100*v/max):6)+'%" title="'+v+' reviews"></i>';});
+  h+='<h2>Last 14 days</h2><div class="card" style="padding:14px 16px"><div class="spark">'+bars+'</div></div>';
+  h+='<h2>Coverage by topic</h2><p class="legend">Dark = solid, light = seen. Click a topic to see its cards.</p>';
+  Object.keys(areas).sort().forEach(function(a){
+    var x=areas[a];
+    h+='<div class="card area" data-act="topic" data-a="'+esc(a)+'"><div class="top"><b>'+esc(a)+'</b><span>'+x.solid+' solid &middot; '+x.seen+' seen &middot; '+x.n+' cards</span></div>'+
+       '<div class="bar"><i class="seen" style="width:'+(100*x.seen/x.n)+'%"></i><i class="solid" style="width:'+(100*x.solid/x.n)+'%"></i></div></div>';
+  });
+  mainEl.innerHTML=h;
+}
+
+/* ---------- sessions ---------- */
+function startSession(keys,opts){
+  opts=opts||{};
+  if(!keys.length){toast('Nothing to study right now.');return;}
+  session={queue:keys,idx:opts.start||0,revealed:false,cram:!!opts.cram,done:0,title:opts.title||''};
+  view='study';render();
+}
+function startDue(){startSession(dueQueue(activeCards()).map(function(c){return c.key;}),{title:'Due and new'});}
+
+function renderStudy(){
+  if(!session){
+    var q=dueQueue(activeCards());
+    mainEl.innerHTML='<h1>Study</h1><p class="sub">'+(q.length?q.length+' cards ready.':'Nothing due right now.')+'</p>'+selbar(q)+'<div class="row"><button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button><button class="btn ghost" data-act="cram">Practice all (shuffled)</button></div>';
+    return;
+  }
+  var s=session;
+  if(s.idx>=s.queue.length){
+    mainEl.innerHTML='<div class="study"><div class="card empty"><h1>Session complete</h1><p>'+s.done+' cards rated.'+(s.cram?' (Practice mode does not change your schedule.)':'')+'</p><div class="row" style="justify-content:center"><button class="btn" data-act="home">Back home</button></div></div></div>';
+    if(!s.cram&&s.done)maybeAutoBackup();
+    session=null;return;
+  }
+  var c=getCard(s.queue[s.idx]);
+  if(!c){s.idx++;renderStudy();return;}
+  var p=S.progress[c.key];
+  var h='<div class="study"><div class="meta"><span>'+esc(areaOf(c))+(s.title&&s.title!==areaOf(c)?' &middot; '+esc(s.title):'')+'</span><span>'+(s.idx+1)+' / '+s.queue.length+(s.cram?' &middot; practice':'')+'</span></div>';
+  h+='<div class="chips chiprow">';
+  if(c.task)h+='<span class="chip">'+esc(c.task)+'</span>';
+  if(c.acs)h+='<span class="chip">'+esc(c.acs)+'</span>';
+  if(c.type)h+='<span class="chip">'+esc(c.type)+'</span>';
+  if(c.verify)h+='<span class="chip verify">needs verification</span>';
+  if(stale(c))h+='<span class="chip verify">re-check due</span>';
+  else if(c.volatile&&c.checked)h+='<span class="chip">checked '+esc(c.checked)+'</span>';
+  if(S.flags[c.key])h+='<span class="chip due">flagged</span>';
+  if(c.edited)h+='<span class="chip">edited</span>';
+  h+='</div>';
+  h+='<div class="scene"><div class="flipper card'+(s.revealed?' flipped':'')+'" id="flipper" data-act="flipcard">'+
+     '<div class="face fr"><span class="tag">Question</span><div class="front">'+fmt(c.front)+'</div></div>'+
+     '<div class="face bk"><span class="tag">Answer</span><div class="ans">'+fmt(c.back)+'</div></div></div></div>';
+  h+='<div class="tap" id="tap">'+(s.revealed?'Click the card to flip it back':'Click the card or press <kbd>Space</kbd> to reveal the answer')+'</div>';
+  h+='<div class="below" id="below"'+(s.revealed?'':' hidden')+'>';
+  h+='<div class="rates">';
+  var labels=['Missed it','Hard','Good','Easy'];
+  for(var r=1;r<=4;r++){var ns=schedule(p,r);h+='<button class="rate r'+r+'" data-act="rate" data-r="'+r+'">'+labels[r-1]+'<small>'+(s.cram?'&nbsp;':fmtInt(ns.due-Date.now()))+'</small></button>';}
+  h+='</div><div class="hint">Keys <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></div>';
+  if(attn(c))h+='<div class="vbox"><span>'+(c.verify?'This card came from AI-generated material and has not been checked. Confirm it against your source, then clear the flag.':'This card depends on rules that change. '+(c.checked?'Last checked '+esc(c.checked)+'.':'It has never been checked.')+' Confirm it is still current.')+'</span><button class="btn small" data-act="markverified" data-k="'+esc(c.key)+'">'+(c.verify?'Mark verified':'Mark checked')+'</button></div>';
+  if(c.followups&&c.followups.length)h+='<div class="card panel"><div class="hd">Likely follow-ups</div><ul>'+c.followups.map(function(f){return '<li>'+fmt(f)+'</li>';}).join('')+'</ul></div>';
+  if(c.links&&c.links.length)h+='<div class="card panel"><div class="hd">Resources</div><ul class="links">'+c.links.map(function(l){var u=safeUrl(l.url);return u?'<li><a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a></li>':'';}).join('')+'</ul></div>';
+  if(c.source||c.page)h+='<div class="card panel"><div class="hd">Source</div><div class="src">'+esc(c.source||'')+(c.source&&c.page?' &middot; ':'')+(c.page?esc(c.page):'')+'</div></div>';
+  h+='<div class="card panel"><div class="hd">My notes</div><textarea id="note" placeholder="Instructor tips, memory tricks, why you missed it...">'+esc(S.notes[c.key]||'')+'</textarea></div>';
+  h+='</div>';
+  h+='<div class="row" style="margin-top:16px"><button class="btn ghost small" data-act="prev"'+(s.idx?'':' disabled')+'>&larr; Back</button><button class="btn ghost small" data-act="next">Skip &rarr;</button><span class="sp"></span>'+
+     '<button class="btn ghost small" data-act="flag" data-k="'+esc(c.key)+'">'+(S.flags[c.key]?'Unflag':'Flag')+'</button>'+
+     '<button class="btn ghost small" data-act="editcard" data-k="'+esc(c.key)+'">Edit card</button>'+
+     '<button class="btn ghost small" data-act="home">End session</button></div></div>';
+  mainEl.innerHTML=h;
+}
+function reveal(){
+  var s=session;if(!s||s.revealed)return;
+  s.revealed=true;
+  var f=$('flipper'),b=$('below'),t=$('tap');
+  if(f)f.classList.add('flipped');if(b)b.hidden=false;if(t)t.innerHTML='Click the card to flip it back';
+}
+function flipCard(){
+  var s=session;if(!s)return;
+  var f=$('flipper');if(!f)return;
+  if(!s.revealed){reveal();return;}
+  f.classList.toggle('flipped');
+}
+function rate(r){
+  var s=session;if(!s||!s.revealed)return;
+  var key=s.queue[s.idx];
+  if(!s.cram){
+    var existed=!!S.progress[key];
+    S.progress[key]=schedule(S.progress[key],r);
+    if(!existed){if(S.daily.date!==today())S.daily={date:today(),newCount:0};S.daily.newCount++;}
+  }
+  var t=today();S.history[t]=(S.history[t]||0)+1;save();
+  if(r===1)s.queue.push(key);
+  s.done++;s.idx++;s.revealed=false;render();
+}
+
+/* ---------- library ---------- */
+function matches(c){
+  var f=lib.filter;
+  if(f==='verify'&&!c.verify)return false;
+  if(f==='stale'&&!stale(c))return false;
+  if(f==='links'&&!(c.links&&c.links.length))return false;
+  if(f==='flag'&&!S.flags[c.key])return false;
+  if(f==='notes'&&!S.notes[c.key])return false;
+  if(f==='weak'&&!isWeak(c))return false;
+  if(f==='edited'&&!c.edited)return false;
+  var q=lib.q.trim().toLowerCase();
+  if(q&&q.split(/\s+/).some(function(t){return hay(c).indexOf(t)<0;}))return false;
+  return true;
+}
+function chipsFor(c){
+  var st=stateOf(c),h='';
+  if(st==='new')h+='<span class="chip">new</span>';else if(st==='due')h+='<span class="chip due">due</span>';else if(st==='solid')h+='<span class="chip ok">solid</span>';else h+='<span class="chip">learning</span>';
+  if(c.verify)h+='<span class="chip verify">verify</span>';
+  if(stale(c))h+='<span class="chip verify">re-check</span>';
+  if(S.flags[c.key])h+='<span class="chip due">flagged</span>';
+  if(S.notes[c.key])h+='<span class="chip">note</span>';
+  if(c.links&&c.links.length)h+='<span class="chip">links</span>';
+  if(c.edited)h+='<span class="chip">edited</span>';
+  return h;
+}
+function renderLibrary(){
+  var sb=subj(),cards=allCards();
+  var h='<h1>Library</h1><p class="sub">'+esc(sb.name)+' &middot; '+cards.length+' cards</p>';
+  h+='<div class="row"><button class="btn" data-act="addcard">Write a card</button><button class="btn ghost" data-act="import">Import deck file</button></div>';
+  h+='<div style="margin-top:14px"><input type="search" id="search" placeholder="Search cards, answers and notes..." value="'+esc(lib.q)+'"></div>';
+  var counts={verify:0,flag:0,notes:0,weak:0,edited:0,stale:0,links:0};
+  cards.forEach(function(c){if(stale(c))counts.stale++;if(c.links&&c.links.length)counts.links++;if(c.verify)counts.verify++;if(S.flags[c.key])counts.flag++;if(S.notes[c.key])counts.notes++;if(isWeak(c))counts.weak++;if(c.edited)counts.edited++;});
+  var tabs=[['all','All'],['verify','Needs verification ('+counts.verify+')'],['flag','Flagged ('+counts.flag+')'],['notes','Has notes ('+counts.notes+')'],['weak','Weak ('+counts.weak+')'],['edited','Edited ('+counts.edited+')'],['stale','Re-check due ('+counts.stale+')'],['links','Has links ('+counts.links+')']];
+  h+='<div class="tabs">'+tabs.map(function(t){return '<button class="tab '+(lib.filter===t[0]?'on':'')+'" data-act="filter" data-f="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</div>';
+  var showList=lib.topic!==null||lib.filter!=='all'||lib.q.trim();
+  if(!showList){
+    var areas={};cards.forEach(function(c){var a=areaOf(c);if(!areas[a])areas[a]={n:0,due:0,verify:0,seen:0,solid:0};var x=areas[a];x.n++;var st=stateOf(c);if(st==='due')x.due++;if(c.verify)x.verify++;if(st!=='new')x.seen++;if(st==='solid')x.solid++;});
+    h+='<h2>Topics</h2>';
+    if(!cards.length)h+='<div class="card empty">No cards yet. Import a deck or write a card.</div>';
+    Object.keys(areas).sort().forEach(function(a){
+      var x=areas[a];
+      h+='<div class="card area" data-act="topic" data-a="'+esc(a)+'"><div class="top"><b>'+esc(a)+'</b><span>'+x.n+' cards'+(x.due?' &middot; '+x.due+' due':'')+(x.verify?' &middot; '+x.verify+' to verify':'')+'</span></div>'+
+         '<div class="bar"><i class="seen" style="width:'+(100*x.seen/x.n)+'%"></i><i class="solid" style="width:'+(100*x.solid/x.n)+'%"></i></div></div>';
+    });
+    h+='<h2>Decks</h2><div class="card list">';
+    var dk=Object.keys(S.decks).filter(function(i){return S.decks[i].subject===S.currentSubject;});
+    if(!dk.length)h+='<div class="empty">No decks in this subject.</div>';
+    dk.forEach(function(id){
+      var d=S.decks[id];
+      h+='<div class="item"><div class="main"><div class="t">'+esc(d.title)+'</div><div class="m">'+d.cards.length+' cards'+(d.standard?' &middot; '+esc(d.standard):'')+'</div></div>'+
+         '<button class="btn ghost small" data-act="exportdeck" data-d="'+esc(id)+'">Export</button>'+
+         '<button class="btn ghost small" data-act="deldeck" data-d="'+esc(id)+'">Remove</button></div>';
+    });
+    h+='</div>';
+    mainEl.innerHTML=h;bindSearch();return;
+  }
+  var list=cards.filter(function(c){return (lib.topic===null||areaOf(c)===lib.topic)&&matches(c);});
+  h+='<div class="row" style="margin-bottom:10px">';
+  if(lib.topic!==null)h+='<button class="btn ghost small" data-act="alltopics">&larr; All topics</button><b>'+esc(lib.topic)+'</b>';
+  else h+='<button class="btn ghost small" data-act="alltopics">&larr; Topics</button>';
+  var nsel=list.filter(function(c){return lib.sel[c.key];}).length;
+  h+='<span class="sp"></span><button class="btn ghost small" data-act="selall">'+(nsel===list.length&&list.length?'Clear selection':'Select all')+'</button>'+
+     '<button class="btn small" data-act="studylist"'+(list.length?'':' disabled')+'>'+(nsel?'Study selected ('+nsel+')':'Study these ('+list.length+')')+'</button></div>';
+  h+='<div class="card list">';
+  if(!list.length)h+='<div class="empty">No cards match.</div>';
+  list.slice(0,400).forEach(function(c,i){
+    h+='<div class="item click" data-act="openrow" data-k="'+esc(c.key)+'" data-i="'+i+'"><input type="checkbox" data-act="selrow" data-k="'+esc(c.key)+'"'+(lib.sel[c.key]?' checked':'')+'>'+
+       '<div class="main"><div class="t">'+fmt(c.front)+'</div><div class="m">'+(lib.topic===null?esc(areaOf(c))+(c.task?' &middot; '+esc(c.task):''):esc(c.task||'')+(c.acs?(c.task?' &middot; ':'')+esc(c.acs):''))+'</div><div class="chips" style="margin-top:6px">'+chipsFor(c)+'</div></div>'+
+       '<button class="btn ghost small" data-act="editcard" data-k="'+esc(c.key)+'">Edit</button></div>';
+  });
+  h+='</div>';
+  if(list.length>400)h+='<p class="legend">Showing the first 400. Use search or filters to narrow.</p>';
+  mainEl.innerHTML=h;bindSearch();
+}
+function bindSearch(){
+  var si=$('search');if(!si)return;
+  si.addEventListener('input',function(){lib.q=si.value;var pos=si.selectionStart;renderLibrary();var n=$('search');n.focus();n.setSelectionRange(pos,pos);});
+}
+function currentList(){return allCards().filter(function(c){return (lib.topic===null||areaOf(c)===lib.topic)&&matches(c);});}
+
+/* ---------- card editor ---------- */
+function openEditor(key){
+  var c=key?getCard(key):null,isNew=!c;
+  var sid=S.currentSubject;
+  var topics={};allCards().forEach(function(x){topics[areaOf(x)]=1;});
+  var v=c||{area:lib.topic||'',task:'',front:'',back:'',followups:[],source:'',verify:false,type:'',page:'',links:[],volatile:false,checked:''};
+  var h='<div class="box"><h2>'+(isNew?'Write a card':'Edit card')+'</h2><p class="sub" style="margin-bottom:0">'+(isNew?'Saved in "My cards" for '+esc(subj().name)+'.':(S.decks[c.deckId]&&S.decks[c.deckId].custom?'This is one of your own cards.':'Edits are kept on top of the imported deck, so re-importing will not overwrite them. You can revert at any time.'))+'</p>'+
+    '<label class="label">Topic</label><input type="text" id="e_area" list="topiclist" value="'+esc(v.area)+'" placeholder="e.g. Airspace, Chapter 4, Depreciation"><datalist id="topiclist">'+Object.keys(topics).sort().map(function(t){return '<option value="'+esc(t)+'">';}).join('')+'</datalist>'+
+    '<div class="two"><div><label class="label">Sub-topic <small>(optional)</small></label><input type="text" id="e_task" value="'+esc(v.task||'')+'"></div><div><label class="label">Reference <small>(optional, e.g. ACS code)</small></label><input type="text" id="e_acs" value="'+esc(v.acs||'')+'"></div></div>'+
+    '<label class="label">Question <button class="btn ghost small" type="button" data-act="bold" data-t="e_front">Bold</button></label><textarea id="e_front">'+esc(v.front)+'</textarea>'+
+    '<label class="label">Answer <button class="btn ghost small" type="button" data-act="bold" data-t="e_back">Bold</button> <small>Select text and press Bold (or Ctrl+B) to mark memory items. In files, bold is written as **text**.</small></label><textarea id="e_back" style="min-height:110px">'+esc(v.back)+'</textarea>'+
+    '<label class="label">Likely follow-ups <small>(one per line)</small></label><textarea id="e_fu">'+esc((v.followups||[]).join('\n'))+'</textarea>'+
+    '<div class="two"><div><label class="label">Source <small>(optional)</small></label><input type="text" id="e_src" value="'+esc(v.source||'')+'"></div><div><label class="label">Page / section <small>(optional, e.g. POH 3-5 or Oral Exam Guide p. 112)</small></label><input type="text" id="e_page" value="'+esc(v.page||'')+'"></div></div>'+
+    '<label class="label">Resources <small>(one per line: <i>label | https://link</i>, or <i>search: topic</i> for a YouTube search)</small></label><textarea id="e_links" placeholder="Weather minimums explained | https://...">'+esc(fmtLinks(v.links))+'</textarea>'+
+    '<label class="check"><input type="checkbox" id="e_vol"'+(v.volatile?' checked':'')+'> Depends on rules that change (regulations, club rules, charts). Remind me to re-check it.</label>'+
+    '<label class="label">Last checked against the source <small>(optional)</small></label><input type="date" id="e_chk" value="'+esc(v.checked||'')+'" style="max-width:200px">'+
+    '<label class="check"><input type="checkbox" id="e_ver"'+(v.verify?' checked':'')+'> Needs verification against the source</label>'+
+    '<div class="row" style="margin-top:20px"><button class="btn" data-act="savecard" data-k="'+esc(key||'')+'">Save</button><button class="btn ghost" data-act="closemodal">Cancel</button><span class="sp"></span>';
+  if(c&&c.hasOv)h+='<button class="btn ghost small" data-act="revertcard" data-k="'+esc(key)+'">Revert to original</button>';
+  if(c&&S.decks[c.deckId]&&S.decks[c.deckId].custom)h+='<button class="btn danger small" data-act="delcard" data-k="'+esc(key)+'">Delete</button>';
+  h+='</div></div>';
+  $('modal').innerHTML=h;$('modal').classList.add('on');
+  setTimeout(function(){var f=$(isNew?'e_area':'e_front');if(f)f.focus();},30);
+}
+function closeModal(){$('modal').classList.remove('on');$('modal').innerHTML='';}
+function saveEditor(key){
+  var front=$('e_front').value.trim(),back=$('e_back').value.trim();
+  if(!front||!back){toast('A card needs a question and an answer.');return;}
+  var pl=parseLinks($('e_links').value);
+  if(pl.bad){toast(pl.bad+' resource line'+(pl.bad===1?'':'s')+' not saved: links must start with http:// or https://');return;}
+  var patch={page:$('e_page').value.trim(),links:pl.links,volatile:$('e_vol').checked,checked:$('e_chk').value,area:$('e_area').value.trim(),task:$('e_task').value.trim(),acs:$('e_acs').value.trim(),front:front,back:back,
+    followups:$('e_fu').value.split('\n').map(function(x){return x.trim();}).filter(Boolean),source:$('e_src').value.trim(),verify:$('e_ver').checked};
+  if(!key){
+    var d=myDeck(S.currentSubject);patch.id=uid();patch.type='';d.cards.push(patch);save();
+    toast('Card added');
+  }else{updateCard(key,patch);toast('Saved');}
+  closeModal();render();
+}
+
+/* ---------- import / export ---------- */
+function download(name,obj){
+  var blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
+}
+function ensureSubject(name){
+  var id=slug(name);
+  for(var k in S.subjects)if(k===id||S.subjects[k].name.toLowerCase()===String(name).toLowerCase())return k;
+  S.subjects[id]={id:id,name:name,examDate:''};return id;
+}
+function normScenarios(arr,fname){
+  if(arr==null)return [];
+  if(!Array.isArray(arr))throw new Error(fname+': "scenarios" must be a list.');
+  var seen={};
+  return arr.map(function(s,i){
+    if(!s||typeof s.id!=='string'||!s.id||typeof s.title!=='string'||!Array.isArray(s.steps)||!s.steps.length)throw new Error(fname+': scenario #'+(i+1)+' needs id, title and steps.');
+    if(seen[s.id])throw new Error(fname+': duplicate scenario id "'+s.id+'".');seen[s.id]=1;
+    var steps=s.steps.map(function(st,j){
+      if(!st||typeof st.q!=='string'||!st.q.trim()||!Array.isArray(st.choices)||st.choices.length<2)throw new Error(fname+': scenario "'+s.id+'" step '+(j+1)+' needs a question and at least two choices.');
+      var ch=st.choices.map(function(c){if(!c||typeof c.t!=='string'||!c.t.trim())throw new Error(fname+': scenario "'+s.id+'" step '+(j+1)+' has an empty choice.');return {t:c.t,ok:!!c.ok,why:typeof c.why==='string'?c.why:''};});
+      if(!ch.some(function(c){return c.ok;}))throw new Error(fname+': scenario "'+s.id+'" step '+(j+1)+' has no correct choice.');
+      return {q:st.q,choices:ch};
+    });
+    return {id:s.id,title:s.title,area:typeof s.area==='string'?s.area:'',intro:typeof s.intro==='string'?s.intro:'',verify:!!s.verify,steps:steps};
+  });
+}
+function importDeck(obj,fname){
+  if(!obj||!obj.deck||!Array.isArray(obj.cards))throw new Error(fname+': not a deck file (needs "deck" and "cards").');
+  var d=obj.deck;
+  if(!d.id||typeof d.id!=='string')throw new Error(fname+': deck.id is missing.');
+  var seen={},cards=[];
+  obj.cards.forEach(function(c,i){
+    if(!c||typeof c.id!=='string'||!c.id)throw new Error(fname+': card #'+(i+1)+' has no id.');
+    if(typeof c.front!=='string'||typeof c.back!=='string'||!c.front.trim()||!c.back.trim())throw new Error(fname+': card "'+c.id+'" needs front and back text.');
+    if(seen[c.id])throw new Error(fname+': duplicate card id "'+c.id+'".');
+    seen[c.id]=1;
+    cards.push({id:c.id,area:c.area||'',task:c.task||'',acs:c.acs||'',type:c.type||'',front:c.front,back:c.back,
+      followups:Array.isArray(c.followups)?c.followups.filter(function(x){return typeof x==='string';}):[],source:c.source||'',verify:!!c.verify,
+      page:typeof c.page==='string'?c.page:'',volatile:!!c.volatile,checked:/^\d{4}-\d{2}-\d{2}$/.test(c.checked||'')?c.checked:'',links:normLinks(c.links)});
+  });
+  var old=S.decks[d.id],sid,added=cards.length,removed=0;
+  if(old){var oi={},ni={};old.cards.forEach(function(x){oi[x.id]=1;});cards.forEach(function(x){ni[x.id]=1;});
+    added=cards.filter(function(x){return !oi[x.id];}).length;removed=old.cards.filter(function(x){return !ni[x.id];}).length;}
+  if(old&&old.subject&&!d.subject)sid=old.subject;
+  else if(d.subject)sid=ensureSubject(String(d.subject));
+  else if(S.currentSubject)sid=S.currentSubject;
+  else sid=ensureSubject('General');
+  var scen=normScenarios(obj.scenarios,fname);
+  S.decks[d.id]={id:d.id,title:d.title||d.id,standard:d.standard||'',subject:sid,custom:!!(old&&old.custom),cards:cards,scenarios:scen};
+  if(!S.currentSubject||!S.subjects[S.currentSubject])S.currentSubject=sid;
+  return {title:d.title||d.id,n:cards.length,updated:!!old,subject:S.subjects[sid].name,added:added,removed:removed};
+}
+function importBackup(obj){
+  if(!obj||obj.format!=='checkride-backup'||!obj.data||typeof obj.data!=='object')throw new Error('Not a backup file.');
+  if((obj.version||1)>VER)throw new Error('This backup was made by a newer version of the app. Update the app first.');
+  var m=migrate(obj.data);
+  try{localStorage.setItem(UNDOKEY,JSON.stringify(S));}catch(e){}
+  S=m;vq=null;session=null;readOnly=false;save();
+}
+function doBackup(auto){
+  download('study-library-backup-'+isoToday()+'.json',{format:'checkride-backup',version:VER,exported:new Date().toISOString(),data:S});
+  S.lastBackup=Date.now();if(auto)S.lastAuto=Date.now();save();
+}
+function maybeAutoBackup(){
+  if(!S.settings.autoDownload||!Object.keys(S.progress).length)return;
+  if(Date.now()-(S.lastAuto||0)<DAY)return;
+  doBackup(true);toast('Backup downloaded. Move it to iCloud Drive or another safe folder.');
+}
+function clearFlags(k){
+  var c=getCard(k);if(!c)return;
+  var patch={};if(c.verify)patch.verify=false;if(c.volatile)patch.checked=isoToday();
+  if(Object.keys(patch).length)updateCard(k,patch);
+}
+function handleFiles(files){
+  var list=Array.prototype.slice.call(files),msgs=[],pending=list.length;if(!pending)return;
+  list.forEach(function(f){
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var obj=JSON.parse(r.result);
+        if(obj&&obj.format==='checkride-backup'){
+          var bd=obj.data||{},nd=Object.keys(bd.decks||{}),nc=0;nd.forEach(function(i){nc+=((bd.decks[i]||{}).cards||[]).length;});
+          if(confirm('Restore this backup'+(obj.exported?' (made '+new Date(obj.exported).toLocaleString()+')':'')+'?\n\nIt contains '+nd.length+' decks, '+nc+' cards, and progress on '+Object.keys(bd.progress||{}).length+' cards. It replaces everything currently in the app. You can undo the restore from Settings.')){importBackup(obj);msgs.push('Backup restored. Undo is available in Settings.');}
+        }else{
+          var res=importDeck(obj,f.name);
+          msgs.push((res.updated?'Updated ':'Imported ')+res.title+' ('+res.n+' cards'+(res.updated?': '+res.added+' new, '+res.removed+' removed':'')+') in '+res.subject+(res.updated?'. Progress, notes and edits kept':''));
+        }
+      }catch(e){msgs.push(e.message||('Could not read '+f.name));}
+      if(--pending===0){save();toast(msgs.join(' | '));render();}
+    };
+    r.onerror=function(){msgs.push('Could not read '+f.name);if(--pending===0){render();toast(msgs.join(' | '));}};
+    r.readAsText(f);
+  });
+}
+
+/* ---------- settings ---------- */
+function persistLabel(){
+  return {granted:'on (the browser will not clear this data on its own)','not-granted':'not granted (keep making backups)',denied:'not granted (keep making backups)',unsupported:'not available in this browser (keep making backups)',unknown:'checking...'}[persistState]||'unknown';
+}
+function protectHtml(){
+  var h='<label class="label">Automatic protection</label><label class="check" style="margin-top:0"><input type="checkbox" id="autodl"'+(S.settings.autoDownload?' checked':'')+'> Download a backup file when I finish a session (at most once a day)</label>'+
+    '<p class="sub" style="margin:8px 0 0">The app also keeps up to three daily snapshots inside this browser. Storage protection: <b>'+persistLabel()+'</b>. <button class="btn ghost small" data-act="persist">Request protection</button></p>';
+  var sn=getSnaps();
+  if(sn.length){
+    h+='<div class="card list" style="margin-top:12px">';
+    sn.slice().reverse().forEach(function(x,i){h+='<div class="item"><div class="main"><div class="t">Snapshot from the start of '+esc(x.date)+'</div></div><button class="btn ghost small" data-act="snaprestore" data-i="'+(sn.length-1-i)+'">Restore</button></div>';});
+    h+='</div>';
+  }
+  var undo=false;try{undo=!!localStorage.getItem(UNDOKEY);}catch(e){}
+  if(undo)h+='<div class="row" style="margin-top:10px"><button class="btn ghost small" data-act="undorestore">Undo last restore</button></div>';
+  h+='<label class="label">Re-check reminders</label><p class="sub" style="margin:0 0 8px">Cards marked as depending on changing rules are flagged again after this many days.</p><input type="number" id="staledays" min="7" max="1000" value="'+((S.settings.staleDays|0)||180)+'" style="max-width:120px">';
+  h+='<p class="legend" style="margin-top:14px">Data format version '+VER+'.</p>';
+  return h;
+}
+function renderSettings(){
+  var h='<h1>Settings</h1><p class="sub">Everything is stored in this browser on this computer. Back up regularly.</p>'+backupBanner();
+  h+='<div class="card" style="padding:20px"><label class="label" style="margin-top:0">New cards per day</label><input type="number" id="npd" min="0" max="200" value="'+(S.settings.newPerDay|0)+'" style="max-width:120px">';
+  var sb=subj();
+  if(sb){
+    h+='<label class="label">Subject: name</label><input type="text" id="sname" value="'+esc(sb.name)+'" style="max-width:340px">'+
+       '<label class="label">Exam date <small>(optional, shows a countdown and a pace on Home)</small></label><input type="date" id="sdate" value="'+esc(sb.examDate||'')+'" style="max-width:200px">'+
+       '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="newsubj">New subject</button><button class="btn ghost small" data-act="delsubj">Delete this subject</button></div>';
+  }else h+='<div class="row" style="margin-top:14px"><button class="btn ghost small" data-act="newsubj">New subject</button></div>';
+  h+='<label class="label">Backup</label><p class="sub" style="margin:0 0 10px">Includes subjects, decks, your own cards, edits, progress and notes. '+(S.lastBackup?'Last backup: '+new Date(S.lastBackup).toLocaleString()+'.':'No backup yet.')+'</p>'+
+     '<div class="row"><button class="btn" data-act="backup">Export backup</button><button class="btn ghost" data-act="import">Restore from backup</button></div>'+
+     protectHtml()+'<label class="label">Reset</label><button class="btn danger small" data-act="reset">Erase everything</button></div>';
+  mainEl.innerHTML=h;
+  $('npd').addEventListener('change',function(){S.settings.newPerDay=Math.max(0,parseInt($('npd').value,10)||0);save();toast('Saved');renderNav();});
+  $('staledays').addEventListener('change',function(){S.settings.staleDays=Math.max(7,parseInt($('staledays').value,10)||180);save();toast('Saved');});
+  if(sb){
+    $('sname').addEventListener('change',function(){var v=$('sname').value.trim();if(v){sb.name=v;save();renderNav();toast('Saved');}});
+    $('sdate').addEventListener('change',function(){sb.examDate=$('sdate').value;save();toast('Saved');});
+  }
+}
+function newSubject(){
+  var name=prompt('Name of the new subject (for example Instrument Rating or Accounting 201):');
+  if(!name||!name.trim())return false;
+  var id=ensureSubject(name.trim());S.currentSubject=id;lib={topic:null,filter:'all',q:'',sel:{}};session=null;save();return true;
+}
+
+/* ---------- games ---------- */
+var game=null,gopts={verified:true};
+function stopGame(){if(game){if(game.timer){clearInterval(game.timer);game.timer=null;}if(game.to){clearTimeout(game.to);game.to=null;}}}
+function resetGame(){stopGame();game=null;}
+function shortBacks(){return activeCards().filter(function(c){var b=plain(c.back);return b.length<=90&&b.indexOf('\n')<0;});}
+function gamePool(kind){
+  return activeCards().filter(function(c){
+    if(gopts.verified&&c.verify)return false;
+    var f=plain(c.front),b=plain(c.back);
+    if(b.indexOf('\n')>-1)return false;
+    if(kind==='match')return f.length<=90&&b.length<=60;
+    return b.length<=90&&f.length<=240;
+  });
+}
+function distractors(c,dpool,n){
+  var seen={},out=[];seen[plain(c.back).trim().toLowerCase()]=1;
+  var same=shuffle(dpool.filter(function(x){return x.key!==c.key&&areaOf(x)===areaOf(c);})),rest=shuffle(dpool.filter(function(x){return x.key!==c.key&&areaOf(x)!==areaOf(c);}));
+  same.concat(rest).forEach(function(x){if(out.length>=n)return;var t=plain(x.back).trim(),k=t.toLowerCase();if(seen[k])return;seen[k]=1;out.push(t);});
+  return out;
+}
+function gameMark(c,wrong){ /* a miss goes back into the review schedule; a hit leaves it alone */
+  if(wrong)S.progress[c.key]=schedule(S.progress[c.key],1);
+  var t=today();S.history[t]=(S.history[t]||0)+1;
+}
+function bestOf(k){return (S.games&&S.games[k])||{};}
+function setBest(k,patch){if(!S.games)S.games={};var b=S.games[k]||{plays:0};for(var f in patch)b[f]=patch[f];S.games[k]=b;}
+
+function renderGames(){
+  var q=dueQueue(activeCards());
+  if(!game){
+    var ps=gamePool('speed'),pm=gamePool('match'),sc=scenarioList();
+    var all=activeCards().length,hidden=activeCards().filter(function(c){return c.verify;}).length;
+    var h='<h1>Games</h1><p class="sub">Practice with your selected decks. A missed question goes back into your review schedule.</p>'+selbar(q);
+    h+='<label class="check" style="margin:0 0 14px"><input type="checkbox" id="g_verified"'+(gopts.verified?' checked':'')+'> Skip cards that still need verification ('+hidden+' of '+all+')</label>';
+    h+='<div class="grid gmenu">';
+    h+='<div class="card gcard"><h3>Speed round</h3><p>60 seconds. Pick the right answer from four options. Streaks multiply your score.</p><div class="m">'+ps.length+' cards fit'+(bestOf('speed').best?' &middot; best '+bestOf('speed').best:'')+'</div><button class="btn" data-act="g_speed"'+(ps.length>=4?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard"><h3>Match</h3><p>Match six questions to six answers as fast as you can.</p><div class="m">'+pm.length+' cards fit'+(bestOf('match').bestTime?' &middot; best '+bestOf('match').bestTime+'s':'')+'</div><button class="btn" data-act="g_match"'+(pm.length>=4?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard"><h3>Scenario flight</h3><p>Work through a situation one decision at a time and see why each choice is better or worse.</p><div class="m">'+sc.length+' scenario'+(sc.length===1?'':'s')+' in these decks</div>';
+    if(sc.length){h+='<div class="scl">';sc.forEach(function(x,i){h+='<button class="btn ghost small" data-act="g_scen" data-i="'+i+'">'+esc(x.s.title)+(bestOf('s:'+x.s.id).best!=null?' &middot; best '+bestOf('s:'+x.s.id).best+'/'+x.s.steps.length:'')+'</button>';});h+='</div>';}
+    else h+='<p class="legend">Import a deck with scenarios, or ask me to write some for your topic.</p>';
+    h+='</div></div>';
+    if(ps.length<4)h+='<p class="legend" style="margin-top:14px">Games need cards with short answers (about 90 characters or less) and at least four of them. Longer, explanatory cards are better studied with the flip cards.</p>';
+    mainEl.innerHTML=h;return;
+  }
+  if(game.type==='speed')return paintSpeed();
+  if(game.type==='match')return paintMatch();
+  if(game.type==='scen')return paintScen();
+}
+
+/* speed round */
+function startSpeed(){
+  var pool=gamePool('speed'),dp=shortBacks();
+  if(pool.length<4){toast('Not enough short-answer cards in this selection.');return;}
+  game={type:'speed',phase:'play',order:shuffle(pool),dp:dp,i:0,score:0,streak:0,maxStreak:0,right:0,wrong:[],t0:Date.now(),dur:60000,locked:false,q:null,timer:null,to:null};
+  if(!speedQ()){toast('Could not build questions from these cards.');game=null;return;}
+  game.timer=setInterval(speedTick,100);
+  render();
+}
+function speedQ(){
+  var g=game,tries=0;
+  while(tries++<g.order.length){
+    var c=g.order[g.i%g.order.length];g.i++;
+    var d=distractors(c,g.dp,3);
+    if(d.length<3)continue;
+    var opts=shuffle([plain(c.back).trim()].concat(d));
+    g.q={c:c,opts:opts,ans:opts.indexOf(plain(c.back).trim()),pick:-1};return true;
+  }
+  return false;
+}
+function speedLeft(){return Math.max(0,game.dur-(Date.now()-game.t0));}
+function speedTick(){
+  if(!game||game.type!=='speed'||game.phase!=='play')return;
+  var left=speedLeft(),bar=$('gbar'),tm=$('gtime');
+  if(bar)bar.style.width=(100*left/game.dur)+'%';
+  if(tm)tm.textContent=Math.ceil(left/1000)+'s';
+  if(left<=0)endSpeed();
+}
+function paintSpeed(){
+  var g=game;
+  if(g.phase==='end'){
+    var acc=g.right+g.wrong.length?Math.round(100*g.right/(g.right+g.wrong.length)):0;
+    var h='<h1>Time</h1><div class="grid"><div class="stat"><b>'+g.score+'</b><span>score'+(g.newBest?' (new best!)':'')+'</span></div><div class="stat"><b>'+g.right+'</b><span>correct</span></div><div class="stat"><b>'+acc+'%</b><span>accuracy</span></div><div class="stat"><b>'+g.maxStreak+'</b><span>best streak</span></div></div>';
+    if(g.wrong.length){h+='<h2>Missed ('+g.wrong.length+')</h2><p class="legend">These are back in your review schedule.</p><div class="card list">';
+      g.wrong.forEach(function(c){h+='<div class="item"><div class="main"><div class="t">'+fmt(c.front)+'</div><div class="m">'+fmt(c.back)+'</div></div></div>';});h+='</div>';}
+    h+='<div class="row" style="margin-top:18px"><button class="btn" data-act="g_speed">Play again</button><button class="btn ghost" data-act="g_menu">Back to games</button></div>';
+    mainEl.innerHTML=h;return;
+  }
+  var q=g.q,mult=Math.min(5,1+Math.floor(g.streak/3));
+  var h='<div class="study"><div class="gtop"><span id="gtime">'+Math.ceil(speedLeft()/1000)+'s</span><span class="gs">Score <b>'+g.score+'</b></span><span class="gs">Streak <b>'+g.streak+'</b> &middot; x'+mult+'</span></div>';
+  h+='<div class="gbarw"><i id="gbar" style="width:'+(100*speedLeft()/g.dur)+'%"></i></div>';
+  h+='<div class="card gq"><div class="front">'+fmt(q.c.front)+'</div></div><div class="gopts">';
+  q.opts.forEach(function(o,i){
+    var cls='gopt';if(q.pick>-1){if(i===q.ans)cls+=' good';else if(i===q.pick)cls+=' bad';}
+    h+='<button class="'+cls+'" data-act="g_ans" data-i="'+i+'"><kbd>'+(i+1)+'</kbd> '+esc(o)+'</button>';});
+  h+='</div><div class="hint">Keys <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></div></div>';
+  mainEl.innerHTML=h;
+}
+function speedAnswer(i){
+  var g=game;if(!g||g.type!=='speed'||g.phase!=='play'||g.locked||speedLeft()<=0)return;
+  g.locked=true;g.q.pick=i;
+  var ok=i===g.q.ans;
+  if(ok){g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.right++;g.score+=10*Math.min(5,1+Math.floor((g.streak-1)/3));gameMark(g.q.c,false);}
+  else{g.streak=0;g.wrong.push(g.q.c);gameMark(g.q.c,true);}
+  save();paintSpeed();
+  g.to=setTimeout(function(){
+    if(!game||game.type!=='speed'||game.phase!=='play')return;
+    game.locked=false;
+    if(speedLeft()<=0){endSpeed();return;}
+    if(!speedQ()){endSpeed();return;}
+    paintSpeed();
+  },ok?450:1300);
+}
+function endSpeed(){
+  var g=game;if(!g||g.phase==='end')return;
+  stopGame();g.phase='end';
+  var b=bestOf('speed');g.newBest=g.score>(b.best||0);
+  setBest('speed',{best:Math.max(b.best||0,g.score),plays:(b.plays||0)+1});save();
+  render();
+}
+
+/* match */
+function startMatch(){
+  var pool=gamePool('match');
+  if(pool.length<4){toast('Not enough short cards in this selection.');return;}
+  game={type:'match',phase:'play',pool:shuffle(pool),pos:0,rounds:0,mist:0,total:0,sel:null,timer:null,to:null};
+  matchRound();render();
+}
+function matchRound(){
+  var g=game,pairs=[],seen={};
+  while(g.pos<g.pool.length&&pairs.length<6){
+    var c=g.pool[g.pos++],k=plain(c.back).trim().toLowerCase();
+    if(seen[k])continue;seen[k]=1;pairs.push(c);
+  }
+  if(pairs.length<3&&g.rounds>0){g.phase='end';return;}
+  g.pairs=pairs;g.left=shuffle(pairs.map(function(c,i){return i;}));g.right=shuffle(pairs.map(function(c,i){return i;}));
+  g.done={};g.missed={};g.sel=null;g.flash=null;g.rm=0;g.t0=Date.now();g.phase='play';
+  stopGame();g.timer=setInterval(function(){var t=$('gtime');if(t&&game&&game.type==='match'&&game.phase==='play')t.textContent=((Date.now()-game.t0)/1000).toFixed(0)+'s';},500);
+}
+function paintMatch(){
+  var g=game;
+  if(g.phase==='end'){
+    mainEl.innerHTML='<h1>All done</h1><p class="sub">'+g.total+' pairs matched with '+g.mist+' mistake'+(g.mist===1?'':'s')+'. Cards you mismatched are back in your review schedule.</p><div class="row"><button class="btn" data-act="g_match">Play again</button><button class="btn ghost" data-act="g_menu">Back to games</button></div>';return;
+  }
+  if(g.phase==='roundend'){
+    var more=g.pos<g.pool.length;
+    mainEl.innerHTML='<h1>Round complete</h1><div class="grid"><div class="stat"><b>'+g.secs+'s</b><span>time'+(g.newBest?' (new best!)':'')+'</span></div><div class="stat"><b>'+g.rm+'</b><span>mistakes</span></div></div><div class="row" style="margin-top:18px">'+(more?'<button class="btn" data-act="g_next">Next round</button>':'')+'<button class="btn ghost" data-act="g_finish">'+(more?'Finish':'See results')+'</button></div>';return;
+  }
+  var h='<div class="study" style="max-width:900px"><div class="gtop"><span id="gtime">'+Math.round((Date.now()-g.t0)/1000)+'s</span><span class="gs">Round '+(g.rounds+1)+'</span><span class="gs">Mistakes <b>'+g.rm+'</b></span></div><div class="mcols"><div>';
+  g.left.forEach(function(i){var cls='mbtn';if(g.done[i])cls+=' done';if(g.sel&&g.sel.side==='L'&&g.sel.i===i)cls+=' sel';if(g.flash&&g.flash.indexOf('L'+i)>-1)cls+=' bad';
+    h+='<button class="'+cls+'" data-act="g_pm" data-side="L" data-i="'+i+'"'+(g.done[i]?' disabled':'')+'>'+fmt(g.pairs[i].front)+'</button>';});
+  h+='</div><div>';
+  g.right.forEach(function(i){var cls='mbtn';if(g.done[i])cls+=' done';if(g.sel&&g.sel.side==='R'&&g.sel.i===i)cls+=' sel';if(g.flash&&g.flash.indexOf('R'+i)>-1)cls+=' bad';
+    h+='<button class="'+cls+'" data-act="g_pm" data-side="R" data-i="'+i+'"'+(g.done[i]?' disabled':'')+'>'+fmt(g.pairs[i].back)+'</button>';});
+  h+='</div></div><div class="hint">Click a question, then its answer (or the other way around).</div></div>';
+  mainEl.innerHTML=h;
+}
+function matchPick(side,i){
+  var g=game;if(!g||g.type!=='match'||g.phase!=='play'||g.flash)return;
+  if(g.done[i])return;
+  if(!g.sel||g.sel.side===side){g.sel={side:side,i:i};paintMatch();return;}
+  var l=side==='L'?i:g.sel.i,r=side==='R'?i:g.sel.i;
+  if(l===r){
+    g.done[l]=1;g.sel=null;g.total++;
+    if(Object.keys(g.done).length===g.pairs.length){
+      stopGame();var secs=Math.round((Date.now()-g.t0)/1000);g.secs=secs;
+      g.pairs.forEach(function(c,k){gameMark(c,!!g.missed[k]);});
+      var b=bestOf('match');g.newBest=!b.bestTime||secs<b.bestTime;
+      setBest('match',{bestTime:g.newBest?secs:b.bestTime,plays:(b.plays||0)+1});save();
+      g.rounds++;g.phase='roundend';
+    }
+    paintMatch();
+  }else{
+    g.mist++;g.rm++;g.missed[l]=1;g.flash=['L'+l,'R'+r];g.sel=null;paintMatch();
+    g.to=setTimeout(function(){if(game&&game.type==='match'){game.flash=null;paintMatch();}},500);
+  }
+}
+
+/* scenario flight */
+function scenarioList(){
+  var out=[];
+  selIds().forEach(function(id){(S.decks[id].scenarios||[]).forEach(function(s){out.push({deck:id,s:s});});});
+  return out;
+}
+function startScen(i){
+  var x=scenarioList()[i];if(!x)return;
+  game={type:'scen',phase:'play',sc:x.s,step:0,score:0,pick:-1,order:null,log:[],timer:null,to:null};
+  scenStep();render();
+}
+function scenStep(){
+  var st=game.sc.steps[game.step];
+  game.order=shuffle(st.choices.map(function(c,i){return i;}));game.pick=-1;
+}
+function paintScen(){
+  var g=game,sc=g.sc,n=sc.steps.length;
+  if(g.phase==='end'){
+    var h='<h1>'+esc(sc.title)+'</h1><div class="grid"><div class="stat"><b>'+g.score+' / '+n+'</b><span>best decisions</span></div></div><h2>Your decisions</h2><div class="card list">';
+    g.log.forEach(function(l,i){h+='<div class="item"><div class="main"><div class="t">'+(l.ok?'✓ ':'✗ ')+fmt(l.q)+'</div><div class="m">You chose: '+fmt(l.chose)+'</div>'+(l.ok?'':'<div class="m">Better: '+fmt(l.best)+'</div>')+'</div></div>';});
+    h+='</div><div class="row" style="margin-top:18px"><button class="btn" data-act="g_scen_again">Try again</button><button class="btn ghost" data-act="g_menu">Back to games</button></div>';
+    mainEl.innerHTML=h;return;
+  }
+  var st=sc.steps[g.step],h='<div class="study"><div class="meta"><span>'+esc(sc.title)+'</span><span>Decision '+(g.step+1)+' / '+n+'</span></div>';
+  if(sc.verify)h+='<div class="vbox" style="margin:0 0 12px"><span>This scenario is a study aid and has not been checked against your POH or instructor. Treat your POH as the authority.</span></div>';
+  if(g.step===0&&sc.intro)h+='<div class="card panel" style="margin-top:0"><div class="hd">Situation</div><div style="white-space:pre-wrap">'+fmt(sc.intro)+'</div></div>';
+  h+='<div class="card gq"><div class="front">'+fmt(st.q)+'</div></div><div class="gopts">';
+  g.order.forEach(function(ci,pos){
+    var c=st.choices[ci],cls='gopt';
+    if(g.pick>-1){if(c.ok)cls+=' good';else if(ci===g.pick)cls+=' bad';}
+    h+='<button class="'+cls+'" data-act="g_ans" data-i="'+ci+'"'+(g.pick>-1?' disabled':'')+'><kbd>'+(pos+1)+'</kbd> '+fmt(c.t)+'</button>';
+    if(g.pick>-1&&(ci===g.pick||c.ok)&&c.why)h+='<div class="gwhy">'+fmt(c.why)+'</div>';
+  });
+  h+='</div>';
+  if(g.pick>-1)h+='<div class="row" style="margin-top:16px"><button class="btn" data-act="g_next">'+(g.step+1<n?'Next decision':'See results')+'</button></div>';
+  h+='</div>';
+  mainEl.innerHTML=h;
+}
+function scenAnswer(ci){
+  var g=game;if(!g||g.type!=='scen'||g.phase!=='play'||g.pick>-1)return;
+  var st=g.sc.steps[g.step],c=st.choices[ci];if(!c)return;
+  g.pick=ci;if(c.ok)g.score++;
+  var best=st.choices.filter(function(x){return x.ok;})[0];
+  g.log.push({q:st.q,chose:c.t,ok:c.ok,best:best.t});
+  paintScen();
+}
+function scenNext(){
+  var g=game;if(!g||g.pick<0)return;
+  if(g.step+1>=g.sc.steps.length){
+    g.phase='end';var k='s:'+g.sc.id,b=bestOf(k);
+    setBest(k,{best:Math.max(b.best||0,g.score),plays:(b.plays||0)+1});
+    var t=today();S.history[t]=(S.history[t]||0)+1;save();paintScen();return;
+  }
+  g.step++;scenStep();paintScen();
+}
+
+/* ---------- deck picker ---------- */
+function openPicker(){pick={ids:{},name:''};selIds().forEach(function(i){pick.ids[i]=1;});renderPicker();}
+function deckCounts(id){
+  var d=S.decks[id],now=Date.now(),due=0,nw=0;
+  d.cards.forEach(function(c){var p=S.progress[id+':'+c.id];if(!p)nw++;else if(p.due<=now)due++;});
+  return {due:due,nw:nw};
+}
+function renderPicker(){
+  var subs=Object.keys(S.subjects).sort(function(a,b){return a===S.currentSubject?-1:(b===S.currentSubject?1:S.subjects[a].name.localeCompare(S.subjects[b].name));});
+  var h='<div class="box"><h2>Choose decks to study</h2><p class="sub" style="margin-bottom:8px">Tick any decks, including decks from other subjects. Cards are combined into one session, and your new-cards-per-day limit covers the whole selection.</p>';
+  h+='<div class="row"><button class="btn ghost small" data-act="pk_subj">All in this subject</button><button class="btn ghost small" data-act="pk_none">None</button><button class="btn ghost small" data-act="pk_due">Only decks with due cards</button></div>';
+  subs.forEach(function(sid){
+    var ids=Object.keys(S.decks).filter(function(i){return S.decks[i].subject===sid;});if(!ids.length)return;
+    h+='<div class="label">'+esc(S.subjects[sid].name)+'</div><div class="card list">';
+    ids.forEach(function(id){var d=S.decks[id],c=deckCounts(id);
+      h+='<label class="item"><input type="checkbox" data-act="pk_tog" data-d="'+esc(id)+'"'+(pick.ids[id]?' checked':'')+'><div class="main"><div class="t">'+esc(d.title)+'</div><div class="m">'+d.cards.length+' cards &middot; '+c.due+' due &middot; '+c.nw+' new</div></div></label>';});
+    h+='</div>';
+  });
+  var sk=Object.keys(S.sets);
+  if(sk.length){
+    h+='<div class="label">Saved sets</div><div class="card list">';
+    sk.forEach(function(id){h+='<div class="item"><div class="main"><div class="t">'+esc(S.sets[id].name)+'</div><div class="m">'+S.sets[id].decks.filter(function(x){return S.decks[x];}).length+' decks</div></div><button class="btn ghost small" data-act="pk_useset" data-s="'+esc(id)+'">Use</button><button class="btn ghost small" data-act="pk_delset" data-s="'+esc(id)+'">Delete</button></div>';});
+    h+='</div>';
+  }
+  h+='<div class="row" style="margin-top:14px"><input type="text" id="pk_name" placeholder="Save this selection as... (e.g. Systems week)" value="'+esc(pick.name)+'" style="flex:1;min-width:180px"><button class="btn ghost small" data-act="pk_saveset">Save set</button></div>';
+  h+='<div class="label">Order</div><label class="check" style="margin-top:0"><input type="radio" name="pkmix" value="mixed"'+(S.settings.mix!=='deck'?' checked':'')+'> Mix decks together (recommended)</label><label class="check"><input type="radio" name="pkmix" value="deck"'+(S.settings.mix==='deck'?' checked':'')+'> Finish one deck at a time</label>';
+  var cnt=Object.keys(pick.ids).length;
+  h+='<div class="row" style="margin-top:20px"><button class="btn" data-act="pk_apply"'+(cnt?'':' disabled')+'>Use selection ('+cnt+')</button><button class="btn ghost" data-act="closemodal">Cancel</button></div></div>';
+  $('modal').innerHTML=h;$('modal').classList.add('on');
+}
+function pickAction(a,el){
+  if(!pick)return;
+  var cur=Object.keys(S.decks).filter(function(i){return S.decks[i].subject===S.currentSubject;});
+  if(a==='pk_subj'){pick.ids={};cur.forEach(function(i){pick.ids[i]=1;});renderPicker();}
+  else if(a==='pk_none'){pick.ids={};renderPicker();}
+  else if(a==='pk_due'){pick.ids={};cur.forEach(function(i){if(deckCounts(i).due>0)pick.ids[i]=1;});if(!Object.keys(pick.ids).length)toast('No decks have cards due right now.');renderPicker();}
+  else if(a==='pk_saveset'){
+    var nm=(pick.name||'').trim(),ids=Object.keys(pick.ids);
+    if(!nm){toast('Give the set a name first.');return;}
+    if(!ids.length){toast('Tick at least one deck.');return;}
+    S.sets[uid()]={name:nm,decks:ids};pick.name='';save();renderPicker();toast('Set saved');
+  }
+  else if(a==='pk_useset'){var st=S.sets[el.getAttribute('data-s')];if(st){pick.ids={};st.decks.forEach(function(i){if(S.decks[i])pick.ids[i]=1;});renderPicker();}}
+  else if(a==='pk_delset'){delete S.sets[el.getAttribute('data-s')];save();renderPicker();}
+  else if(a==='pk_apply'){
+    var sel=Object.keys(pick.ids).filter(function(i){return S.decks[i];});
+    var same=sel.length===cur.length&&cur.every(function(i){return pick.ids[i];});
+    if(same)delete S.sel[S.currentSubject];else S.sel[S.currentSubject]=sel;
+    save();pick=null;closeModal();session=null;resetGame();render();
+  }
+}
+
+/* ---------- verify queue ---------- */
+function buildVq(){
+  var l=allCards().filter(attn);
+  l.sort(function(a,b){return (b.verify?1:0)-(a.verify?1:0);});
+  vq={queue:l.map(function(c){return c.key;}),idx:0};
+}
+function renderVerify(){
+  if(!vq)buildVq();
+  while(vq.idx<vq.queue.length){var cc=getCard(vq.queue[vq.idx]);if(cc&&attn(cc))break;vq.idx++;}
+  var total=allCards().filter(attn).length;
+  var h='<h1>Verify queue</h1>';
+  if(vq.idx>=vq.queue.length){
+    h+='<p class="sub">'+(total?total+' card'+(total===1?' is':'s are')+' still flagged (you skipped them this round).':'Nothing needs checking right now.')+'</p>'+
+       '<div class="card empty"><div class="row" style="justify-content:center">'+(total?'<button class="btn" data-act="vrebuild">Go through them again</button>':'')+'<button class="btn ghost" data-act="home">Back home</button></div></div>';
+    mainEl.innerHTML=h;return;
+  }
+  var c=getCard(vq.queue[vq.idx]);
+  h+='<p class="sub">Check each card against your source (POH, ACS, regulations, club documents). Clear the flag only when you have confirmed the answer. '+total+' to go.</p>';
+  h+='<div class="meta"><span>'+esc(areaOf(c))+(c.task?' &middot; '+esc(c.task):'')+'</span><span>'+(vq.idx+1)+' / '+vq.queue.length+'</span></div>';
+  h+='<div class="chips chiprow">';
+  if(c.verify)h+='<span class="chip verify">needs verification</span>';
+  if(stale(c))h+='<span class="chip verify">'+(c.checked?'last checked '+esc(c.checked):'never checked')+'</span>';
+  if(c.acs)h+='<span class="chip">'+esc(c.acs)+'</span>';
+  h+='</div>';
+  h+='<div class="card panel"><div class="hd">Question</div><div style="white-space:pre-wrap;font-weight:600">'+fmt(c.front)+'</div></div>';
+  h+='<div class="card panel"><div class="hd">Answer</div><div style="white-space:pre-wrap">'+fmt(c.back)+'</div></div>';
+  if(c.source||c.page)h+='<div class="card panel"><div class="hd">Where to check it</div><div class="src">'+esc(c.source||'')+(c.source&&c.page?' &middot; ':'')+esc(c.page||'')+'</div></div>';
+  if(c.links&&c.links.length)h+='<div class="card panel"><div class="hd">Resources</div><ul class="links">'+c.links.map(function(l){var u=safeUrl(l.url);return u?'<li><a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a></li>':'';}).join('')+'</ul></div>';
+  h+='<div class="row" style="margin-top:16px"><button class="btn" data-act="vok">'+(c.verify?'Verified, clear the flag':'Checked, still current')+'</button><button class="btn ghost" data-act="vedit">Edit card</button><button class="btn ghost" data-act="vskip">Skip</button><span class="sp"></span><button class="btn ghost small" data-act="vprev"'+(vq.idx?'':' disabled')+'>&larr; Back</button></div>';
+  h+='<div class="hint">Keys <kbd>V</kbd> verified &nbsp; <kbd>E</kbd> edit &nbsp; <kbd>S</kbd> skip</div>';
+  mainEl.innerHTML=h;
+}
+function vokNow(){
+  var k=vq&&vq.queue[vq.idx];if(!k)return;
+  clearFlags(k);toast('Cleared');render();
+}
+
+/* ---------- search and help ---------- */
+function searchAll(q){
+  var toks=q.toLowerCase().split(/\s+/).filter(Boolean),out=[];if(!toks.length)return out;
+  Object.keys(S.decks).forEach(function(id){
+    S.decks[id].cards.forEach(function(c){
+      if(out.length>=40)return;
+      var m=applyOv(c,id+':'+c.id),h=hay(m);
+      if(toks.every(function(t){return h.indexOf(t)>-1;}))out.push(m);
+    });
+  });
+  return out;
+}
+function openSearch(){
+  $('modal').innerHTML='<div class="box"><input type="search" id="gs" placeholder="Search every card: questions, answers, sources, notes..." autocomplete="off"><div id="gsr" class="card list" style="margin-top:12px"></div><p class="legend" style="margin:10px 0 0">Enter opens the first result. Esc closes.</p></div>';
+  $('modal').classList.add('on');setTimeout(function(){var g=$('gs');if(g)g.focus();},30);gsRender();
+}
+function gsRender(){
+  var q=$('gs').value,r=searchAll(q),h='';
+  if(!q.trim())h='<div class="empty">Type to search all your subjects.</div>';
+  else if(!r.length)h='<div class="empty">No cards match.</div>';
+  r.forEach(function(c){var d=S.decks[c.deckId];h+='<div class="item click" data-act="gsopen" data-k="'+esc(c.key)+'"><div class="main"><div class="t">'+fmt(c.front)+'</div><div class="m">'+esc((S.subjects[d.subject]||{}).name||'')+' &middot; '+esc(areaOf(c))+'</div></div></div>';});
+  $('gsr').innerHTML=h;
+}
+function openFromSearch(k){
+  var d=S.decks[k.slice(0,k.indexOf(':'))];if(!d)return;
+  closeModal();if(S.subjects[d.subject])S.currentSubject=d.subject;save();
+  startSession([k],{cram:true,title:'Search'});
+}
+function openHelp(){
+  var rows=[['Space or Enter','Flip the card'],['1 2 3 4','Rate: missed, hard, good, easy'],['← →','Previous or next card'],['F','Flag the card'],['E','Edit the card'],['N','Jump to your notes'],['V','Mark verified or checked'],['S','Skip (in the verify queue)'],['/ or Ctrl+K','Search all cards'],['?','Show this list'],['Esc','Close a window']];
+  var h='<div class="box"><h2>Keyboard shortcuts</h2><div class="card list" style="margin-top:12px">';
+  rows.forEach(function(r){h+='<div class="item"><div class="main"><div class="t"><kbd>'+r[0]+'</kbd></div></div><div class="m" style="margin:0">'+r[1]+'</div></div>';});
+  h+='</div><div class="row" style="margin-top:16px"><button class="btn ghost" data-act="closemodal">Close</button></div></div>';
+  $('modal').innerHTML=h;$('modal').classList.add('on');
+}
+
+/* ---------- events ---------- */
+var fileIn=$('fileIn');
+fileIn.addEventListener('change',function(){handleFiles(fileIn.files);fileIn.value='';});
+
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='subjSel'){
+    if(t.value==='__new'){if(!newSubject()){render();return;}}
+    else{S.currentSubject=t.value;session=null;vq=null;lib={topic:null,filter:'all',q:'',sel:{}};save();}
+    view=view==='study'?'home':view;render();
+  }else if(t.id==='g_verified'){
+    gopts.verified=t.checked;renderGames();
+  }else if(t.id==='autodl'){
+    S.settings.autoDownload=t.checked;save();toast(t.checked?'Automatic backup downloads on':'Automatic backup downloads off');
+  }else if(t.getAttribute&&t.getAttribute('data-act')==='pk_tog'){
+    var dd=t.getAttribute('data-d');if(pick){if(t.checked)pick.ids[dd]=1;else delete pick.ids[dd];renderPicker();}
+  }else if(t.name==='pkmix'){
+    S.settings.mix=t.value;save();
+  }else if(t.getAttribute&&t.getAttribute('data-act')==='selrow'){
+    var k=t.getAttribute('data-k');if(t.checked)lib.sel[k]=1;else delete lib.sel[k];renderLibrary();
+  }
+});
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');if(!el)return;
+  var a=el.getAttribute('data-act'),k=el.getAttribute('data-k');
+  if(a==='selrow'||a==='pk_tog')return;
+  if(a==='openrow'&&(e.target.closest('button')||e.target.tagName==='INPUT'))return;
+  switch(a){
+    case 'nav':view=el.getAttribute('data-v');if(view!=='study')session=null;if(view==='verify')vq=null;if(view==='games')resetGame();if(view==='library')lib={topic:null,filter:'all',q:'',sel:{}};render();break;
+    case 'home':if(session&&!session.cram&&session.done)maybeAutoBackup();view='home';session=null;render();break;
+    case 'start':startDue();break;
+    case 'cram':startSession(shuffle(activeCards().map(function(c){return c.key;})),{cram:true,title:'Practice'});break;
+    case 'weak':startSession(activeCards().filter(isWeak).map(function(c){return c.key;}),{title:'Weak cards'});break;
+    case 'needverify':vq=null;view='verify';render();break;
+    case 'topic':lib={topic:el.getAttribute('data-a'),filter:'all',q:'',sel:{}};view='library';render();break;
+    case 'alltopics':lib={topic:null,filter:'all',q:'',sel:{}};render();break;
+    case 'filter':lib.filter=el.getAttribute('data-f');render();break;
+    case 'selall':{var l=currentList(),all=l.length&&l.every(function(c){return lib.sel[c.key];});lib.sel={};if(!all)l.forEach(function(c){lib.sel[c.key]=1;});renderLibrary();break;}
+    case 'studylist':{var ls=currentList(),sel=ls.filter(function(c){return lib.sel[c.key];});var use=sel.length?sel:ls;startSession(use.map(function(c){return c.key;}),{title:lib.topic||'Selection'});break;}
+    case 'openrow':{var ls2=currentList(),i=parseInt(el.getAttribute('data-i'),10);startSession(ls2.map(function(c){return c.key;}),{start:i,title:lib.topic||'Browse'});break;}
+    case 'flipcard':flipCard();break;
+    case 'rate':rate(parseInt(el.getAttribute('data-r'),10));break;
+    case 'next':if(session){session.idx++;session.revealed=false;render();}break;
+    case 'prev':if(session&&session.idx>0){session.idx--;session.revealed=false;render();}break;
+    case 'flag':if(S.flags[k])delete S.flags[k];else S.flags[k]=1;save();render();break;
+    case 'markverified':clearFlags(k);toast('Cleared');render();break;
+    case 'addcard':openEditor(null);break;
+    case 'editcard':openEditor(k);break;
+    case 'closemodal':closeModal();break;
+    case 'savecard':saveEditor(k||null);break;
+    case 'revertcard':if(confirm('Discard your edits to this card and restore the imported version?')){delete S.overrides[k];save();closeModal();render();}break;
+    case 'delcard':if(confirm('Delete this card? Its progress and notes are removed too.')){
+        var i2=k.indexOf(':'),d=S.decks[k.slice(0,i2)],cid=k.slice(i2+1);
+        d.cards=d.cards.filter(function(c){return c.id!==cid;});delete S.progress[k];delete S.notes[k];delete S.flags[k];
+        if(session){session.queue=session.queue.filter(function(x){return x!==k;});}
+        save();closeModal();render();}break;
+    case 'bold':toggleBold(el.getAttribute('data-t'));break;
+    case 'g_speed':startSpeed();break;
+    case 'g_match':startMatch();break;
+    case 'g_scen':startScen(parseInt(el.getAttribute('data-i'),10));break;
+    case 'g_scen_again':{var sid0=game&&game.sc&&game.sc.id,li=scenarioList().map(function(x){return x.s.id;}).indexOf(sid0);if(li>-1)startScen(li);break;}
+    case 'g_menu':resetGame();render();break;
+    case 'g_finish':if(game){stopGame();game.phase='end';render();}break;
+    case 'g_next':if(game&&game.type==='scen')scenNext();else if(game&&game.type==='match'){matchRound();render();}break;
+    case 'g_ans':if(game&&game.type==='speed')speedAnswer(parseInt(el.getAttribute('data-i'),10));else scenAnswer(parseInt(el.getAttribute('data-i'),10));break;
+    case 'g_pm':matchPick(el.getAttribute('data-side'),parseInt(el.getAttribute('data-i'),10));break;
+    case 'search':openSearch();break;
+    case 'gsopen':openFromSearch(k);break;
+    case 'help':openHelp();break;
+    case 'pickdecks':openPicker();break;
+    case 'pk_subj':case 'pk_none':case 'pk_due':case 'pk_saveset':case 'pk_useset':case 'pk_delset':case 'pk_apply':pickAction(a,el);break;
+    case 'vok':vokNow();break;
+    case 'vedit':if(vq&&vq.queue[vq.idx])openEditor(vq.queue[vq.idx]);break;
+    case 'vskip':if(vq){vq.idx++;render();}break;
+    case 'vprev':if(vq&&vq.idx>0){vq.idx--;render();}break;
+    case 'vrebuild':vq=null;render();break;
+    case 'persist':persistState='unknown';checkPersist();setTimeout(function(){if(view==='settings')render();},600);break;
+    case 'snaprestore':{var sn=getSnaps()[parseInt(el.getAttribute('data-i'),10)];
+        if(sn&&confirm('Restore the snapshot from the start of '+sn.date+'? Everything you did since then is replaced. You can undo this from Settings.')){
+          try{localStorage.setItem(UNDOKEY,JSON.stringify(S));}catch(e){}
+          S=migrate(JSON.parse(sn.data));vq=null;session=null;readOnly=false;save();toast('Snapshot restored');render();}break;}
+    case 'undorestore':{var raw=null;try{raw=localStorage.getItem(UNDOKEY);}catch(e){}
+        if(raw&&confirm('Undo the last restore and go back to what you had before it?')){
+          S=migrate(JSON.parse(raw));try{localStorage.removeItem(UNDOKEY);}catch(e){}vq=null;session=null;save();toast('Restore undone');render();}break;}
+    case 'import':fileIn.click();break;
+    case 'newsubj':if(newSubject()){view='home';render();}break;
+    case 'delsubj':{var sb=subj();if(sb&&confirm('Delete the subject "'+sb.name+'" with all its decks, your cards, progress and notes? This cannot be undone.')){
+        Object.keys(S.decks).forEach(function(id){if(S.decks[id].subject===sb.id){
+          S.decks[id].cards.forEach(function(c){var kk=id+':'+c.id;delete S.progress[kk];delete S.notes[kk];delete S.flags[kk];delete S.overrides[kk];});delete S.decks[id];}});
+        delete S.subjects[sb.id];S.currentSubject=Object.keys(S.subjects)[0]||'';save();view='home';session=null;render();}break;}
+    case 'deldeck':{var id=el.getAttribute('data-d');if(confirm('Remove this deck? Progress, notes and edits for its cards are kept in case you re-import it.')){delete S.decks[id];save();render();}break;}
+    case 'exportdeck':{
+      var dk=S.decks[el.getAttribute('data-d')];
+      var cs=dk.cards.map(function(c){var m=applyOv(c,dk.id+':'+c.id);return{id:m.id,area:m.area,task:m.task,acs:m.acs,type:m.type,front:m.front,back:m.back,followups:m.followups,source:m.source,page:m.page||'',verify:!!m.verify,volatile:!!m.volatile,checked:m.checked||'',links:m.links||[]};});
+      download(slug(dk.title)+'.deck.json',{format:'checkride-deck',version:1,deck:{id:dk.id,title:dk.title,standard:dk.standard,subject:(S.subjects[dk.subject]||{}).name||''},cards:cs,scenarios:dk.scenarios||[]});break;}
+    case 'backup':doBackup(false);toast('Backup exported. Move it to a safe folder such as iCloud Drive.');renderSettings();break;
+    case 'reset':if(confirm('Erase all subjects, decks, progress, and notes from this browser? This cannot be undone.')&&confirm('Really erase everything?')){S=migrate(defaults());save();session=null;view='home';render();}break;
+  }
+});
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='gs'){gsRender();return;}
+  if(t.id==='pk_name'&&pick){pick.name=t.value;return;}
+  if(t.id==='note'&&session){var key=session.queue[session.idx];if(t.value)S.notes[key]=t.value;else delete S.notes[key];save();}
+});
+document.addEventListener('keydown',function(e){
+  var modalOn=$('modal').classList.contains('on');
+  if((e.metaKey||e.ctrlKey)&&(e.key||'').toLowerCase()==='b'&&e.target&&(e.target.id==='e_front'||e.target.id==='e_back')){e.preventDefault();toggleBold(e.target.id);return;}
+  if(e.key==='Escape'&&modalOn){closeModal();return;}
+  if((e.metaKey||e.ctrlKey)&&(e.key||'').toLowerCase()==='k'){e.preventDefault();openSearch();return;}
+  if(e.target&&e.target.id==='gs'&&e.key==='Enter'){var r=searchAll($('gs').value);if(r[0])openFromSearch(r[0].key);return;}
+  var tag=(e.target.tagName||'').toLowerCase();
+  if(tag==='textarea'||tag==='input'||tag==='select'||modalOn)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='/'){e.preventDefault();openSearch();return;}
+  if(e.key==='?'){openHelp();return;}
+  if(view==='games'&&game){
+    if(game.type==='speed'&&'1234'.indexOf(e.key)>-1&&e.key&&game.phase==='play'){speedAnswer(parseInt(e.key,10)-1);return;}
+    if(game.type==='scen'&&game.phase==='play'){
+      if('1234'.indexOf(e.key)>-1&&e.key&&game.pick<0){var ci2=game.order[parseInt(e.key,10)-1];if(ci2!==undefined)scenAnswer(ci2);return;}
+      if((e.key==='Enter'||e.code==='Space')&&game.pick>-1){e.preventDefault();scenNext();return;}
+    }
+    return;
+  }
+  if(view==='verify'&&vq){
+    var k0=(e.key||'').toLowerCase();
+    if(k0==='v')vokNow();
+    else if(k0==='e'&&vq.queue[vq.idx])openEditor(vq.queue[vq.idx]);
+    else if(k0==='s'||e.key==='ArrowRight'){vq.idx++;render();}
+    else if(e.key==='ArrowLeft'&&vq.idx>0){vq.idx--;render();}
+    return;
+  }
+  if(view!=='study'||!session||session.idx>=session.queue.length)return;
+  var kk=(e.key||'').toLowerCase(),ck=session.queue[session.idx];
+  if(kk==='f'){if(S.flags[ck])delete S.flags[ck];else S.flags[ck]=1;save();render();return;}
+  if(kk==='e'){openEditor(ck);return;}
+  if(kk==='v'){var cv=getCard(ck);if(cv&&attn(cv)){clearFlags(ck);toast('Cleared');render();}return;}
+  if(kk==='n'&&session.revealed){var nt=$('note');if(nt){e.preventDefault();nt.focus();}return;}
+  if(e.code==='Space'||e.key==='Enter'){e.preventDefault();flipCard();}
+  else if(session.revealed&&'1234'.indexOf(e.key)>-1&&e.key)rate(parseInt(e.key,10));
+  else if(e.key==='ArrowRight'){session.idx++;session.revealed=false;render();}
+  else if(e.key==='ArrowLeft'&&session.idx>0){session.idx--;session.revealed=false;render();}
+});
+$('modal').addEventListener('click',function(e){if(e.target===$('modal'))closeModal();});
+
+snapshot();save();render();checkPersist();
+})();
+
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});</script></body>
+</html>
