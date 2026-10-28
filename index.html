@@ -175,10 +175,63 @@ strong{font-weight:800}
 .mbtn.bad{border-color:var(--bad);background:rgba(220,38,38,.12)}
 @media (max-width:760px){.mcols{gap:8px}.mbtn{font-size:14px;padding:10px}}
 
+/* ---- v3.1 refresh ---- */
+:root{--shadow:0 1px 2px rgba(16,24,40,.05);--r:14px}
+@media (prefers-color-scheme:dark){:root{--shadow:0 1px 2px rgba(0,0,0,.4)}}
+.card,.stat{border-radius:var(--r)}
+#topbar{display:none}
+nav .brand small{display:none}
+nav button.nv{gap:12px;justify-content:flex-start}
+nav button.nv svg{width:20px;height:20px;flex:none}
+nav button.nv .lb{flex:1}
+nav button.nv .pill,nav button.nv kbd{margin-left:auto}
+nav button.nv.more,nav button.nv .dot{display:none}
+nav .navsep{height:1px;background:var(--line);margin:10px 6px}
+nav button.nv.sec{font-size:14px}
+.selline{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px;margin:-10px 0 18px}
+.link{all:unset;cursor:pointer;color:var(--accent);font-weight:600;font-size:14px}
+.link:hover{text-decoration:underline}.link[disabled]{opacity:.4;pointer-events:none}
+.iconbtn{all:unset;cursor:pointer;width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--muted);flex:none}
+.iconbtn svg{width:20px;height:20px}
+.hero{padding:24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;background:linear-gradient(135deg,var(--accent-soft),var(--panel) 70%)}
+.hero .big{font-size:46px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.hero .cap{color:var(--muted);font-size:14px;margin-top:6px}
+.hero .btn{padding:14px 28px;font-size:16px}
+.sublinks{display:flex;gap:8px 20px;flex-wrap:wrap;margin:14px 2px 0}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.mini .stat{padding:14px 16px}.mini .stat b{font-size:22px}.mini .stat b small{font-size:14px;color:var(--muted);font-weight:500}
+.covcard{padding:2px 18px}
+.covrow{padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.covrow:last-child{border-bottom:0}.covrow:hover b{color:var(--accent)}
+.covrow .top{display:flex;justify-content:space-between;gap:12px}.covrow .top span{color:var(--muted);font-size:13px}
+.mrow{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex!important;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line);font-weight:500}
+.mrow:last-child{border-bottom:0}.mrow svg{width:22px;height:22px;color:var(--muted)}
+h1{font-size:26px}
+@media (max-width:760px){
+  .app{display:block}
+  #topbar{display:flex;gap:10px;position:sticky;top:0;z-index:20;background:var(--bg);padding:12px 16px;align-items:center}
+  #topbar select{flex:1;font-weight:600}
+  nav{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%;height:auto;flex-direction:row;flex-wrap:nowrap;padding:6px 4px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);border-bottom:0;z-index:30;gap:0}
+  nav .brand,nav .subjsel,nav .navsep,nav button.nv.sec{display:none}
+  nav button.nv{flex:1;flex-direction:column;gap:2px;font-size:11px;padding:7px 2px;align-items:center;justify-content:center;position:relative;border-radius:12px}
+  nav button.nv .lb{flex:none}
+  nav button.nv.more{display:flex}
+  nav button.nv .pill{position:absolute;top:2px;left:calc(50% + 6px);margin:0;font-size:10px;padding:0 6px;line-height:16px}
+  nav button.nv .dot{display:block;position:absolute;top:6px;left:calc(50% + 8px);width:8px;height:8px;border-radius:50%;background:var(--warn)}
+  main{padding:14px 16px 100px}
+  h1{font-size:24px}
+  .hero{padding:20px}.hero .big{font-size:40px}.hero .btn{width:100%}
+  #toast{bottom:88px;max-width:90vw}
+}
+
+.gcard.wide{grid-column:1/-1}
+.gcard .scl{flex-direction:row;flex-wrap:wrap;gap:8px}
+
 </style>
-<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Study"></head>
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Study"><meta name="theme-color" content="#2f6bff"></head>
 <body>
 <div class="app">
+  <header id="topbar"></header>
   <nav id="nav"></nav>
   <main id="main"></main>
 </div>
@@ -259,6 +312,7 @@ function checkPersist(){
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function today(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function summarize(m){var bad=m.filter(function(x){return !/^(Imported|Updated) /.test(x);});return m.length>2?(m.length-bad.length)+' files imported'+(bad.length?'. '+bad.join(' | '):''):m.join(' | ');}
 function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show');},3200);}
 function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
 function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';}
@@ -413,20 +467,35 @@ function render(){if(view!=='games')stopGame();renderNav();
   if(!Object.keys(S.subjects).length&&view!=='settings'){renderWelcome();return;}
   if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else renderSettings();
 }
+var ICONS={home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',study:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v11"/>',games:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',library:'<path d="M4 4h5v16H4zM11 4h4v16h-4zM17.5 5.5l3.2.9-3.6 13.6-3.2-.9z"/>',more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',verify:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.4-1 .9-1 1.6M12 17h.01"/>'};
+function ic(n){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[n]+'</svg>';}
+function subjOpts(){
+  var h='';Object.keys(S.subjects).forEach(function(k){h+='<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';});
+  return h+'<option value="__new">+ New subject...</option>';
+}
 function renderNav(){
-  var h='<div class="brand">Study Library<small>Local &middot; offline &middot; private</small></div>';
   var sk=Object.keys(S.subjects);
-  h+='<div class="subjsel"><label>Subject</label><select id="subjSel">';
-  sk.forEach(function(k){h+='<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';});
-  h+='<option value="__new">+ New subject...</option></select></div>';
   var q=sk.length?dueQueue(activeCards()).length:0,vc=sk.length?allCards().filter(attn).length:0;
-  [['home','Home'],['study','Study'],['games','Games'],['verify','Verify queue'],['library','Library'],['settings','Settings']].forEach(function(it){
-    var n=it[0]==='study'?q:(it[0]==='verify'?vc:0);
-    h+='<button class="nv '+(view===it[0]?'on':'')+'" data-act="nav" data-v="'+it[0]+'">'+it[1]+(n?'<span class="pill'+(it[0]==='verify'?' warn':'')+'">'+n+'</span>':'')+'</button>';
+  var h='<div class="brand">Study Library</div><div class="subjsel"><select id="subjSel" aria-label="Subject">'+subjOpts()+'</select></div>';
+  [['home','Home'],['study','Study'],['games','Games'],['library','Library']].forEach(function(it){
+    var n=it[0]==='study'?q:0;
+    h+='<button class="nv pri'+(view===it[0]?' on':'')+'" data-act="nav" data-v="'+it[0]+'">'+ic(it[0])+'<span class="lb">'+it[1]+'</span>'+(n?'<span class="pill">'+n+'</span>':'')+'</button>';
   });
-  h+='<button class="nv" data-act="search">Search<kbd>/</kbd></button>';
-  h+='<button class="nv" data-act="help">Shortcuts<kbd>?</kbd></button>';
+  h+='<div class="navsep"></div>';
+  h+='<button class="nv sec'+(view==='verify'?' on':'')+'" data-act="nav" data-v="verify">'+ic('verify')+'<span class="lb">Verify queue</span>'+(vc?'<span class="pill warn">'+vc+'</span>':'')+'</button>';
+  h+='<button class="nv sec'+(view==='settings'?' on':'')+'" data-act="nav" data-v="settings">'+ic('settings')+'<span class="lb">Settings</span></button>';
+  h+='<button class="nv sec" data-act="search">'+ic('search')+'<span class="lb">Search</span><kbd>/</kbd></button>';
+  h+='<button class="nv sec" data-act="help">'+ic('help')+'<span class="lb">Shortcuts</span><kbd>?</kbd></button>';
+  h+='<button class="nv more'+((view==='verify'||view==='settings')?' on':'')+'" data-act="more">'+ic('more')+'<span class="lb">More</span>'+(vc?'<i class="dot"></i>':'')+'</button>';
   navEl.innerHTML=h;
+  var tb=$('topbar');if(tb)tb.innerHTML='<select id="subjSel2" aria-label="Subject">'+subjOpts()+'</select><button class="iconbtn" data-act="search" aria-label="Search">'+ic('search')+'</button>';
+}
+function openMore(){
+  var vc=allCards().filter(attn).length;
+  var h='<div class="box"><div class="card list">';
+  [['verify','Verify queue'+(vc?' ('+vc+')':'')],['settings','Settings']].forEach(function(it){h+='<button class="item click mrow" data-act="nav" data-v="'+it[0]+'">'+ic(it[0])+'<span>'+it[1]+'</span></button>';});
+  h+='<button class="item click mrow" data-act="search">'+ic('search')+'<span>Search all cards</span></button><button class="item click mrow" data-act="help">'+ic('help')+'<span>Keyboard shortcuts</span></button></div></div>';
+  $('modal').innerHTML=h;$('modal').classList.add('on');
 }
 function backupBanner(){
   var w=loadWarn?'<div class="banner">'+esc(loadWarn)+'</div>':'';
@@ -435,12 +504,8 @@ function backupBanner(){
   return w;
 }
 function selbar(q){
-  var ids=selIds(),custom=isCustomSel(),per={};
-  (q||[]).forEach(function(c){per[c.deckId]=(per[c.deckId]||0)+1;});
-  var h='<div class="card selbar"><div class="selt"><span class="lbl">Studying</span> '+(custom?ids.length+' selected deck'+(ids.length===1?'':'s'):'all '+ids.length+' deck'+(ids.length===1?'':'s')+' in this subject')+'</div><div class="chips">';
-  ids.slice(0,8).forEach(function(i){h+='<span class="chip">'+esc(S.decks[i].title)+(per[i]?' &middot; '+per[i]:'')+'</span>';});
-  if(ids.length>8)h+='<span class="chip">+'+(ids.length-8)+' more</span>';
-  return h+'</div><button class="btn ghost small" data-act="pickdecks">Choose decks</button></div>';
+  var ids=selIds(),custom=isCustomSel(),n=ids.length;
+  return '<div class="selline"><span>'+(custom?n+' selected deck'+(n===1?'':'s'):'All '+n+' deck'+(n===1?'':'s'))+'</span><button class="link" data-act="pickdecks">Change</button></div>';
 }
 function renderWelcome(){
   mainEl.innerHTML=backupBanner()+'<h1>Welcome</h1><p class="sub">Create a subject (for example "Private Pilot" or "Accounting 201"), then import decks or write your own cards.</p>'+
@@ -477,24 +542,23 @@ function renderHome(){
     }
   }
   h+='<p class="sub">'+esc(sub)+'</p>'+backupBanner()+selbar(q);
-  h+='<div class="grid"><div class="stat"><b>'+q.length+'</b><span>to study now</span></div><div class="stat"><b>'+due+'</b><span>due for review</span></div>'+
-     '<div class="stat"><b>'+seen+' / '+cards.length+'</b><span>cards seen</span></div><div class="stat"><b>'+solid+'</b><span>solid (3+ day interval)</span></div>'+
-     '<div class="stat"><b>'+streak()+'</b><span>day streak</span></div></div>';
-  h+='<div class="row" style="margin-top:18px"><button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button>'+
-     '<button class="btn ghost" data-act="cram">Practice all (shuffled)</button>'+
-     '<button class="btn ghost" data-act="weak"'+(weak?'':' disabled')+'>Weak cards ('+weak+')</button>'+
-     '<button class="btn ghost" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button></div>';
-  // 14 day activity
+  h+='<div class="card hero"><div><div class="big">'+q.length+'</div><div class="cap">to study now'+(due?' &middot; '+due+' due for review':'')+'</div></div>'+
+     '<button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button></div>';
+  h+='<div class="sublinks"><button class="link" data-act="cram">Practice all (shuffled)</button>'+
+     '<button class="link" data-act="weak"'+(weak?'':' disabled')+'>Weak cards ('+weak+')</button>'+
+     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button></div>';
+  h+='<div class="mini"><div class="stat"><b>'+seen+'<small> / '+cards.length+'</small></b><span>seen</span></div><div class="stat"><b>'+solid+'</b><span>solid</span></div><div class="stat"><b>'+streak()+'</b><span>day streak</span></div></div>';
   var bars='',max=1,vals=[];
   for(var i=13;i>=0;i--){var d=new Date(Date.now()-i*DAY),k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),v=S.history[k]||0;vals.push(v);if(v>max)max=v;}
   vals.forEach(function(v){bars+='<i class="'+(v?'':'z')+'" style="height:'+(v?Math.max(8,100*v/max):6)+'%" title="'+v+' reviews"></i>';});
   h+='<h2>Last 14 days</h2><div class="card" style="padding:14px 16px"><div class="spark">'+bars+'</div></div>';
-  h+='<h2>Coverage by topic</h2><p class="legend">Dark = solid, light = seen. Click a topic to see its cards.</p>';
+  h+='<h2>Topics</h2><div class="card covcard">';
   Object.keys(areas).sort().forEach(function(a){
     var x=areas[a];
-    h+='<div class="card area" data-act="topic" data-a="'+esc(a)+'"><div class="top"><b>'+esc(a)+'</b><span>'+x.solid+' solid &middot; '+x.seen+' seen &middot; '+x.n+' cards</span></div>'+
+    h+='<div class="covrow" data-act="topic" data-a="'+esc(a)+'"><div class="top"><b>'+esc(a)+'</b><span>'+x.solid+' solid &middot; '+x.seen+' seen &middot; '+x.n+'</span></div>'+
        '<div class="bar"><i class="seen" style="width:'+(100*x.seen/x.n)+'%"></i><i class="solid" style="width:'+(100*x.solid/x.n)+'%"></i></div></div>';
   });
+  h+='</div>';
   mainEl.innerHTML=h;
 }
 
@@ -785,12 +849,12 @@ function handleFiles(files){
           if(confirm('Restore this backup'+(obj.exported?' (made '+new Date(obj.exported).toLocaleString()+')':'')+'?\n\nIt contains '+nd.length+' decks, '+nc+' cards, and progress on '+Object.keys(bd.progress||{}).length+' cards. It replaces everything currently in the app. You can undo the restore from Settings.')){importBackup(obj);msgs.push('Backup restored. Undo is available in Settings.');}
         }else{
           var res=importDeck(obj,f.name);
-          msgs.push((res.updated?'Updated ':'Imported ')+res.title+' ('+res.n+' cards'+(res.updated?': '+res.added+' new, '+res.removed+' removed':'')+') in '+res.subject+(res.updated?'. Progress, notes and edits kept':''));
+          msgs.push((res.updated?'Updated ':'Imported ')+res.title+' ('+(res.n?res.n+' cards':'scenarios only')+(res.updated?': '+res.added+' new, '+res.removed+' removed':'')+') in '+res.subject+(res.updated?'. Progress, notes and edits kept':''));
         }
       }catch(e){msgs.push(e.message||('Could not read '+f.name));}
-      if(--pending===0){save();toast(msgs.join(' | '));render();}
+      if(--pending===0){save();toast(summarize(msgs));render();}
     };
-    r.onerror=function(){msgs.push('Could not read '+f.name);if(--pending===0){render();toast(msgs.join(' | '));}};
+    r.onerror=function(){msgs.push('Could not read '+f.name);if(--pending===0){render();toast(summarize(msgs));}};
     r.readAsText(f);
   });
 }
@@ -877,7 +941,7 @@ function renderGames(){
     h+='<div class="grid gmenu">';
     h+='<div class="card gcard"><h3>Speed round</h3><p>60 seconds. Pick the right answer from four options. Streaks multiply your score.</p><div class="m">'+ps.length+' cards fit'+(bestOf('speed').best?' &middot; best '+bestOf('speed').best:'')+'</div><button class="btn" data-act="g_speed"'+(ps.length>=4?'':' disabled')+'>Play</button></div>';
     h+='<div class="card gcard"><h3>Match</h3><p>Match six questions to six answers as fast as you can.</p><div class="m">'+pm.length+' cards fit'+(bestOf('match').bestTime?' &middot; best '+bestOf('match').bestTime+'s':'')+'</div><button class="btn" data-act="g_match"'+(pm.length>=4?'':' disabled')+'>Play</button></div>';
-    h+='<div class="card gcard"><h3>Scenario flight</h3><p>Work through a situation one decision at a time and see why each choice is better or worse.</p><div class="m">'+sc.length+' scenario'+(sc.length===1?'':'s')+' in these decks</div>';
+    h+='<div class="card gcard wide"><h3>Scenario flight</h3><p>Work through a situation one decision at a time and see why each choice is better or worse.</p><div class="m">'+sc.length+' scenario'+(sc.length===1?'':'s')+' in these decks</div>';
     if(sc.length){h+='<div class="scl">';sc.forEach(function(x,i){h+='<button class="btn ghost small" data-act="g_scen" data-i="'+i+'">'+esc(x.s.title)+(bestOf('s:'+x.s.id).best!=null?' &middot; best '+bestOf('s:'+x.s.id).best+'/'+x.s.steps.length:'')+'</button>';});h+='</div>';}
     else h+='<p class="legend">Import a deck with scenarios, or ask me to write some for your topic.</p>';
     h+='</div></div>';
@@ -1204,7 +1268,7 @@ fileIn.addEventListener('change',function(){handleFiles(fileIn.files);fileIn.val
 
 document.addEventListener('change',function(e){
   var t=e.target;
-  if(t.id==='subjSel'){
+  if(t.id==='subjSel'||t.id==='subjSel2'){
     if(t.value==='__new'){if(!newSubject()){render();return;}}
     else{S.currentSubject=t.value;session=null;vq=null;lib={topic:null,filter:'all',q:'',sel:{}};save();}
     view=view==='study'?'home':view;render();
@@ -1226,7 +1290,7 @@ document.addEventListener('click',function(e){
   if(a==='selrow'||a==='pk_tog')return;
   if(a==='openrow'&&(e.target.closest('button')||e.target.tagName==='INPUT'))return;
   switch(a){
-    case 'nav':view=el.getAttribute('data-v');if(view!=='study')session=null;if(view==='verify')vq=null;if(view==='games')resetGame();if(view==='library')lib={topic:null,filter:'all',q:'',sel:{}};render();break;
+    case 'nav':closeModal();view=el.getAttribute('data-v');if(view!=='study')session=null;if(view==='verify')vq=null;if(view==='games')resetGame();if(view==='library')lib={topic:null,filter:'all',q:'',sel:{}};render();break;
     case 'home':if(session&&!session.cram&&session.done)maybeAutoBackup();view='home';session=null;render();break;
     case 'start':startDue();break;
     case 'cram':startSession(shuffle(activeCards().map(function(c){return c.key;})),{cram:true,title:'Practice'});break;
@@ -1267,6 +1331,7 @@ document.addEventListener('click',function(e){
     case 'search':openSearch();break;
     case 'gsopen':openFromSearch(k);break;
     case 'help':openHelp();break;
+    case 'more':openMore();break;
     case 'pickdecks':openPicker();break;
     case 'pk_subj':case 'pk_none':case 'pk_due':case 'pk_saveset':case 'pk_useset':case 'pk_delset':case 'pk_apply':pickAction(a,el);break;
     case 'vok':vokNow();break;
