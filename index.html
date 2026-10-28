@@ -247,6 +247,21 @@ h1{font-size:26px}
   .cs-item{padding:2px 0;font-size:11px}
   h1,.sub,.seg{display:none!important}
 }
+/* v5 */
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1115;--panel:#181b21;--ink:#eceef2;--muted:#9aa3b2;--line:#272b33;--accent:#6b93ff;--accent-ink:#0b1020;--accent-soft:#1c2540;--shadow:0 1px 2px rgba(0,0,0,.4);--warnbg:#3a2c10;--warnline:#5b4519;--warnink:#f2c47a}
+:root[data-theme="light"]{color-scheme:light;--bg:#f5f6f8;--panel:#ffffff;--ink:#16181d;--muted:#6b7280;--line:#e5e7eb;--accent:#2f6bff;--accent-ink:#ffffff;--accent-soft:#e8efff;--shadow:0 1px 2px rgba(16,24,40,.05);--warnbg:#fff4e0;--warnline:#f3d39b;--warnink:#8a5200}
+.blank{display:inline-block;min-width:3.2em;text-align:center;border-bottom:2px solid var(--accent);color:var(--accent);font-weight:600;padding:0 6px;margin:0 2px}
+.clx{margin-top:10px;font-size:.92em;color:var(--muted)}
+.gq .cx{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+pre.metar{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;margin:0 0 12px}
+.slots{display:grid;gap:6px;margin:12px 0}
+.slot{display:flex;gap:10px;align-items:center;min-height:42px;padding:8px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--panel)}
+.slot b{min-width:1.6em;color:var(--muted)}
+.slot.filled{border-style:solid;border-color:var(--good);background:var(--accent-soft)}
+.chips2{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chipbtn{width:auto;text-align:left}
+.acr{display:inline-block;margin-left:8px;font-size:.8em;letter-spacing:.12em;color:var(--accent)}
+.dcard{margin-bottom:14px}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Study"><meta name="theme-color" content="#2f6bff"></head>
@@ -267,7 +282,7 @@ var KEY='checkride-study-v1',SNAPKEY='checkride-study-snap',UNDOKEY='checkride-s
 
 /* ---------- storage ---------- */
 var FLIGHT_RE=/pilot|flight|flying|aviation|checkride|aircraft|taefc/i;
-function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed'},daily:{date:'',newCount:0},history:{},cheat:{},mocks:[],lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
+function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed',theme:'auto',wxStations:'KICT,KMCI,KSTL,KDEN,KORD,KATL,KSEA,KPHX,KBOS,KMIA'},daily:{date:'',newCount:0},history:{},cheat:{},mocks:[],dc:{date:'',streak:0,best:0,right:0,n:0},wx:null,lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
 function migrate(s){
   var base=defaults();for(var k in s)base[k]=s[k];
   var df=defaults().settings;if(!base.settings||typeof base.settings!=='object')base.settings={};
@@ -277,6 +292,7 @@ function migrate(s){
   s=base;
   if(!s.cheat||typeof s.cheat!=='object')s.cheat={};
   if(!Array.isArray(s.mocks))s.mocks=[];
+  if(!s.dc||typeof s.dc!=='object')s.dc={date:'',streak:0,best:0,right:0,n:0};
   var ids=Object.keys(s.decks),orphan=ids.filter(function(i){return !s.decks[i].subject;});
   if(orphan.length){
     if(!s.subjects['private-pilot'])s.subjects['private-pilot']={id:'private-pilot',name:'Private Pilot',examDate:''};
@@ -349,8 +365,8 @@ function fmtInt(ms){
   return Math.round(d/30)+'mo';
 }
 function uid(){return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function fmt(s){return esc(s).replace(/\*\*([^*]+?)\*\*/g,'<strong>$1</strong>');}
-function plain(s){return String(s==null?'':s).replace(/\*\*/g,'');}
+function fmt(s){return esc(s).replace(/\*\*([^*]+?)\*\*/g,'<strong>$1</strong>').replace(/\{\{|\}\}/g,'');}
+function plain(s){return String(s==null?'':s).replace(/\*\*/g,'').replace(/\{\{|\}\}/g,'');}
 function toggleBold(id){
   var t=$(id);if(!t)return;
   var a=t.selectionStart,b=t.selectionEnd,v=t.value;
@@ -492,8 +508,8 @@ function render(){if(view!=='games')stopGame();if(view==='checkride'&&!isFlight(
   if(!Object.keys(S.subjects).length&&view!=='settings'){renderWelcome();return;}
   if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else if(view==='checkride')renderCheckride();else renderSettings();
 }
-var ICONS={check:'<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',study:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v11"/>',games:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',library:'<path d="M4 4h5v16H4zM11 4h4v16h-4zM17.5 5.5l3.2.9-3.6 13.6-3.2-.9z"/>',more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',verify:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.4-1 .9-1 1.6M12 17h.01"/>'};
-function ic(n){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[n]+'</svg>';}
+var ICONS={theme:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',check:'<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',study:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v11"/>',games:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',library:'<path d="M4 4h5v16H4zM11 4h4v16h-4zM17.5 5.5l3.2.9-3.6 13.6-3.2-.9z"/>',more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',verify:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.4-1 .9-1 1.6M12 17h.01"/>'};
+function ic(n){if(n==='checkride')n='check';return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[n]+'</svg>';}
 function subjOpts(){
   var h='';var ks=Object.keys(S.subjects),fl=ks.filter(function(k){return S.subjects[k].flight;}),ot=ks.filter(function(k){return !S.subjects[k].flight;});
   function opt(k){return '<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';}
@@ -516,6 +532,7 @@ function renderNav(){
   h+='<button class="nv sec'+(view==='settings'?' on':'')+'" data-act="nav" data-v="settings">'+ic('settings')+'<span class="lb">Settings</span></button>';
   h+='<button class="nv sec" data-act="search">'+ic('search')+'<span class="lb">Search</span><kbd>/</kbd></button>';
   h+='<button class="nv sec" data-act="help">'+ic('help')+'<span class="lb">Shortcuts</span><kbd>?</kbd></button>';
+  h+='<button class="nv sec" data-act="theme">'+ic('theme')+'<span class="lb">Theme: '+themeLabel()+'</span></button>';
   h+='<button class="nv more'+((view==='verify'||view==='settings')?' on':'')+'" data-act="more">'+ic('more')+'<span class="lb">More</span>'+(vc?'<i class="dot"></i>':'')+'</button>';
   navEl.innerHTML=h;
   var tb=$('topbar');if(tb)tb.innerHTML='<select id="subjSel2" aria-label="Subject">'+subjOpts()+'</select><button class="iconbtn" data-act="search" aria-label="Search">'+ic('search')+'</button>';
@@ -524,7 +541,7 @@ function openMore(){
   var vc=allCards().filter(attn).length;
   var h='<div class="box"><div class="card list">';
   [['verify','Verify queue'+(vc?' ('+vc+')':'')],['settings','Settings']].forEach(function(it){h+='<button class="item click mrow" data-act="nav" data-v="'+it[0]+'">'+ic(it[0])+'<span>'+it[1]+'</span></button>';});
-  h+='<button class="item click mrow" data-act="search">'+ic('search')+'<span>Search all cards</span></button><button class="item click mrow" data-act="help">'+ic('help')+'<span>Keyboard shortcuts</span></button></div></div>';
+  h+='<button class="item click mrow" data-act="search">'+ic('search')+'<span>Search all cards</span></button><button class="item click mrow" data-act="help">'+ic('help')+'<span>Keyboard shortcuts</span></button><button class="item click mrow" data-act="theme">'+ic('theme')+'<span>Theme: '+themeLabel()+'</span></button></div></div>';
   $('modal').innerHTML=h;$('modal').classList.add('on');
 }
 function backupBanner(){
@@ -576,7 +593,7 @@ function renderHome(){
      '<button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button></div>';
   h+='<div class="sublinks"><button class="link" data-act="cram">Practice all (shuffled)</button>'+
      '<button class="link" data-act="weak"'+(weak?'':' disabled')+'>Weak cards ('+weak+')</button>'+
-     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button></div>';
+     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button><button class="link" data-act="g_daily">Daily challenge'+(S.dc.date===today()?' (done)':'')+'</button></div>';
   h+='<div class="mini"><div class="stat"><b>'+seen+'<small> / '+cards.length+'</small></b><span>seen</span></div><div class="stat"><b>'+solid+'</b><span>solid</span></div><div class="stat"><b>'+streak()+'</b><span>day streak</span></div></div>';
   var bars='',max=1,vals=[];
   for(var i=13;i>=0;i--){var d=new Date(Date.now()-i*DAY),k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),v=S.history[k]||0;vals.push(v);if(v>max)max=v;}
@@ -628,8 +645,8 @@ function renderStudy(){
   if(c.edited)h+='<span class="chip">edited</span>';
   h+='</div>';
   h+='<div class="scene"><div class="flipper card'+(s.revealed?' flipped':'')+'" id="flipper" data-act="flipcard">'+
-     '<div class="face fr"><span class="tag">Question</span><div class="front">'+fmt(c.front)+'</div>'+imgHtml(c)+'</div>'+
-     '<div class="face bk"><span class="tag">Answer</span><div class="ans">'+fmt(c.back)+'</div></div></div></div>';
+     '<div class="face fr"><span class="tag">Question</span><div class="front">'+dispFront(c)+'</div>'+imgHtml(c)+'</div>'+
+     '<div class="face bk"><span class="tag">Answer</span><div class="ans">'+dispBack(c)+'</div></div></div></div>';
   h+='<div class="tap" id="tap">'+(s.revealed?'Click the card to flip it back':'Click the card or press <kbd>Space</kbd> to reveal the answer')+'</div>';
   h+='<div class="below" id="below"'+(s.revealed?'':' hidden')+'>';
   h+='<div class="rates">';
@@ -789,7 +806,9 @@ function importDeck(obj,fname){
   var seen={},cards=[];
   obj.cards.forEach(function(c,i){
     if(!c||typeof c.id!=='string'||!c.id)throw new Error(fname+': card #'+(i+1)+' has no id.');
-    if(typeof c.front!=='string'||typeof c.back!=='string'||!c.front.trim()||!c.back.trim())throw new Error(fname+': card "'+c.id+'" needs front and back text.');
+    if(!c.type&&typeof c.front==='string'&&(c.back==null||!String(c.back).trim())&&/\{\{.+?\}\}/.test(c.front))c.type='cloze';
+    if(c.type==='cloze'){if(typeof c.front!=='string'||!/\{\{.+?\}\}/.test(c.front))throw new Error(fname+': fill-in-the-blank card "'+c.id+'" needs {{hidden words}} in its text.');c.back=typeof c.back==='string'?c.back:'';}
+    else if(typeof c.front!=='string'||typeof c.back!=='string'||!c.front.trim()||!c.back.trim())throw new Error(fname+': card "'+c.id+'" needs front and back text.');
     if(seen[c.id])throw new Error(fname+': duplicate card id "'+c.id+'".');
     seen[c.id]=1;
     cards.push({id:c.id,area:c.area||'',task:c.task||'',acs:c.acs||'',type:c.type||'',front:c.front,back:c.back,
@@ -803,8 +822,8 @@ function importDeck(obj,fname){
   else if(d.subject)sid=ensureSubject(String(d.subject));
   else if(S.currentSubject)sid=S.currentSubject;
   else sid=ensureSubject('General');
-  var scen=normScenarios(obj.scenarios,fname);
-  S.decks[d.id]={id:d.id,title:d.title||d.id,standard:d.standard||'',subject:sid,custom:!!(old&&old.custom),cards:cards,scenarios:scen};
+  var scen=normScenarios(obj.scenarios,fname),mn=normMnemonics(obj.mnemonics,fname);
+  S.decks[d.id]={id:d.id,title:d.title||d.id,standard:d.standard||'',subject:sid,custom:!!(old&&old.custom),cards:cards,scenarios:scen,mnemonics:mn};
   if(!S.currentSubject||!S.subjects[S.currentSubject])S.currentSubject=sid;
   return {title:d.title||d.id,n:cards.length,updated:!!old,subject:S.subjects[sid].name,added:added,removed:removed};
 }
@@ -850,7 +869,7 @@ function handleFiles(files){
           if(confirm('Restore this backup'+(obj.exported?' (made '+new Date(obj.exported).toLocaleString()+')':'')+'?\n\nIt contains '+nd.length+' decks, '+nc+' cards, and progress on '+Object.keys(bd.progress||{}).length+' cards. It replaces everything currently in the app. You can undo the restore from Settings.')){importBackup(obj);msgs.push('Backup restored. Undo is available in Settings.');}
         }else{
           var res=importDeck(obj,f.name);
-          msgs.push((res.updated?'Updated ':'Imported ')+res.title+' ('+(res.n?res.n+' cards':'scenarios only')+(res.updated?': '+res.added+' new, '+res.removed+' removed':'')+') in '+res.subject+(res.updated?'. Progress, notes and edits kept':''));
+          msgs.push((res.updated?'Updated ':'Imported ')+res.title+' ('+(res.n?res.n+' cards':'games only')+(res.updated?': '+res.added+' new, '+res.removed+' removed':'')+') in '+res.subject+(res.updated?'. Progress, notes and edits kept':''));
         }
       }catch(e){msgs.push(e.message||('Could not read '+f.name));}
       if(--pending===0){save();toast(summarize(msgs));render();}
@@ -875,8 +894,9 @@ function openEditor(key){
   var adv=!!S.settings.adv||hasAdv(v);
   var h='<div class="box"><h2>'+(isNew?'Write a card':'Edit card')+'</h2><p class="sub" style="margin-bottom:0">'+(isNew?'Saved in "My cards" for '+esc(subj().name)+'.':(S.decks[c.deckId]&&S.decks[c.deckId].custom?'This is one of your own cards.':'Edits are kept on top of the imported deck, so re-importing will not overwrite them. You can revert at any time.'))+'</p>'+
     '<label class="label">Topic</label><input type="text" id="e_area" list="topiclist" value="'+esc(v.area)+'" placeholder="e.g. Airspace, Chapter 4, Depreciation"><datalist id="topiclist">'+Object.keys(topics).sort().map(function(t){return '<option value="'+esc(t)+'">';}).join('')+'</datalist>'+
-    '<label class="label">Question <button class="btn ghost small" type="button" data-act="bold" data-t="e_front">Bold</button></label><textarea id="e_front">'+esc(v.front)+'</textarea>'+
-    '<label class="label">Answer <button class="btn ghost small" type="button" data-act="bold" data-t="e_back">Bold</button></label><textarea id="e_back" style="min-height:110px">'+esc(v.back)+'</textarea>'+
+    '<label class="label">Card type</label><select id="e_type"><option value="">Question and answer</option><option value="cloze"'+(v.type==='cloze'?' selected':'')+'>Fill in the blank</option></select>'+
+    '<label class="label" id="e_flbl">'+(v.type==='cloze'?'Text (wrap hidden words in {{double braces}}) ':'Question ')+'<button class="btn ghost small" type="button" data-act="bold" data-t="e_front">Bold</button> <button class="btn ghost small" type="button" data-act="clozebtn" id="e_clbtn"'+(v.type==='cloze'?'':' hidden')+'>Hide selected words</button></label><textarea id="e_front">'+esc(v.front)+'</textarea>'+
+    '<label class="label" id="e_blbl">'+(v.type==='cloze'?'Extra note (optional) ':'Answer ')+'<button class="btn ghost small" type="button" data-act="bold" data-t="e_back">Bold</button></label><textarea id="e_back" style="min-height:110px">'+esc(v.back)+'</textarea>'+
     '<label class="label">Picture <small>(optional)</small></label><div class="row"><input type="file" id="e_imgf" accept="image/*"><button class="btn ghost small" type="button" data-act="rmimg">Remove picture</button></div><img id="e_imgp" class="cimg" alt="" '+(edImg?'src="'+esc(edImg)+'"':'hidden')+'>'+
     '<div class="row" style="margin-top:14px"><button class="btn ghost small" type="button" data-act="adv" id="e_advbtn">'+(adv?'Hide advanced options':'Advanced options')+'</button></div>'+
     '<div id="e_adv"'+(adv?'':' hidden')+'>'+
@@ -897,13 +917,16 @@ function openEditor(key){
 function closeModal(){$('modal').classList.remove('on');$('modal').innerHTML='';}
 function saveEditor(key){
   var front=$('e_front').value.trim(),back=$('e_back').value.trim();
-  if(!front||!back){toast('A card needs a question and an answer.');return;}
+  var ty=$('e_type').value,oldTy=key?((getCard(key)||{}).type||''):'';
+  if(ty==='cloze'){if(!/\{\{.+?\}\}/.test(front)){toast('Wrap the words to hide in double curly braces, like {{this}}.');return;}}
+  else if(!front||!back){toast('A card needs a question and an answer.');return;}
   var pl=parseLinks($('e_links').value);
   if(pl.bad){$('e_adv').hidden=false;toast(pl.bad+' resource line'+(pl.bad===1?'':'s')+' not saved: links must start with http:// or https://');return;}
   var patch={page:$('e_page').value.trim(),links:pl.links,volatile:$('e_vol').checked,checked:$('e_chk').value,area:$('e_area').value.trim(),task:$('e_task').value.trim(),acs:$('e_acs').value.trim(),front:front,back:back,
     followups:$('e_fu').value.split('\n').map(function(x){return x.trim();}).filter(Boolean),source:$('e_src').value.trim(),verify:$('e_ver').checked,image:edImg};
+  if(ty==='cloze')patch.type='cloze';else if(oldTy==='cloze')patch.type='';
   if(!key){
-    var d=myDeck(S.currentSubject);patch.id=uid();patch.type='';d.cards.push(patch);save();
+    var d=myDeck(S.currentSubject);patch.id=uid();patch.type=ty==='cloze'?'cloze':'';d.cards.push(patch);save();
     toast('Card added');
   }else{updateCard(key,patch);toast('Saved');}
   closeModal();render();
@@ -1053,10 +1076,10 @@ function moHtml(){
   }
   var k=mo.queue[mo.idx],c=getCard(k);
   var h3='<div class="card" style="padding:20px"><div class="meta"><span>'+esc(areaOf(c))+'</span><span>Question '+(mo.idx+1)+' of '+mo.queue.length+'</span></div>'+
-    '<div class="front" style="font-size:1.25em;margin:14px 0">'+fmt(c.front)+'</div>'+imgHtml(c);
+    '<div class="front" style="font-size:1.25em;margin:14px 0">'+dispFront(c)+'</div>'+imgHtml(c);
   if(!mo.revealed)h3+='<p class="sub">Say your answer out loud, then reveal it.</p><div class="row"><button class="btn" data-act="morev">Reveal answer</button><button class="btn ghost" data-act="moend">End</button></div>';
   else{
-    h3+='<div class="ans" style="padding:12px 14px;background:var(--accent-soft);border-radius:12px">'+fmt(c.back)+'</div>';
+    h3+='<div class="ans" style="padding:12px 14px;background:var(--accent-soft);border-radius:12px">'+dispBack(c)+'</div>';
     if(c.followups&&c.followups.length)h3+='<div class="hd" style="margin-top:14px">An examiner may ask next</div><ul>'+c.followups.map(function(f){return '<li>'+fmt(f)+'</li>';}).join('')+'</ul>';
     if(c.source||c.page)h3+='<div class="src" style="margin-top:8px">'+esc(c.source||'')+(c.source&&c.page?' &middot; ':'')+esc(c.page||'')+'</div>';
     h3+='<div class="rates" style="margin-top:16px"><button class="rate r1" data-act="morate" data-r="1">Missed it</button><button class="rate r2" data-act="morate" data-r="2">Shaky</button><button class="rate r3" data-act="morate" data-r="3">Solid</button></div>';
@@ -1211,6 +1234,386 @@ document.addEventListener('click',function(e){
   }
 });
 
+/* ---------- v5: cloze, MC games, sequences, mnemonics, weather, theme ---------- */
+function rngFrom(seed){var a=0;seed=String(seed);for(var i=0;i<seed.length;i++)a=(a*31+seed.charCodeAt(i))|0;return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shufR(a,r){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function pickR(a,r){return a[Math.floor(r()*a.length)];}
+function applyTheme(){var t=S.settings.theme||'auto',r=document.documentElement;if(t==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',t);}
+function themeLabel(){return {auto:'Auto',dark:'Dark',light:'Light'}[S.settings.theme||'auto'];}
+function cycleTheme(){var o=['auto','dark','light'],i=o.indexOf(S.settings.theme||'auto');S.settings.theme=o[(i+1)%3];save();applyTheme();render();toast('Theme: '+themeLabel());}
+/* cloze */
+function clozeBlanks(t){var m=[],re=/\{\{(.+?)\}\}/g,x;while((x=re.exec(String(t))))m.push(x[1]);return m;}
+var BLANKH='<span class="blank">[ &hellip; ]</span>';
+function clozeFront(t){return fmt(String(t).replace(/\{\{(.+?)\}\}/g,'\u0001')).replace(/\u0001/g,BLANKH);}
+function clozeBack(t){return fmt(String(t).replace(/\{\{(.+?)\}\}/g,'**$1**'));}
+function dispFront(c){return c.type==='cloze'?clozeFront(c.front):fmt(c.front);}
+function dispBack(c){return c.type==='cloze'?clozeBack(c.front)+(c.back?'<div class="clx">'+fmt(c.back)+'</div>':''):fmt(c.back);}
+/* generic multiple-choice engine */
+function mcOpts(ans,cands,r,n){
+  var seen={},out=[];seen[String(ans).toLowerCase()]=1;
+  shufR(cands,r).forEach(function(x){var k=String(x).toLowerCase();if(out.length>=n||seen[k])return;seen[k]=1;out.push(x);});
+  return out;
+}
+function mcItem(o,r){var opts=shufR([o.ans].concat(o.dis),r);o.opts=opts;o.ai=opts.indexOf(o.ans);return o;}
+function clozeItems(r,max){
+  var pool=[],items=[];
+  activeCards().forEach(function(c){
+    if(gopts.verified&&c.verify)return;
+    var b=String(c.back||'');
+    if(c.type==='cloze'){var bl=clozeBlanks(c.front);bl.forEach(function(x,i){pool.push({c:c,mode:'c',i:i,ans:x});});}
+    else if(b.indexOf('\n')<0&&plain(b).length<=240){
+      var re=/\*\*([^*]{2,40}?)\*\*/g,x,n=0,segs=[];while((x=re.exec(b))){segs.push(x[1]);n++;}
+      if(n&&n<=3&&!/^\d+\./.test(segs[0]))segs.forEach(function(s,i){pool.push({c:c,mode:'d',i:i,ans:s});});
+    }
+  });
+  var all=pool.map(function(p){return p.ans;});
+  var seenC={};
+  shufR(pool,r).forEach(function(p){
+    if(items.length>=max||seenC[p.c.key])return;
+    var txt,ctx;
+    if(p.mode==='c'){var n=0;txt=p.c.front.replace(/\{\{(.+?)\}\}/g,function(m,g){return (n++===p.i)?'\u0001':g;});ctx=areaOf(p.c);}
+    else{var k=0;txt=String(p.c.back).replace(/\*\*([^*]{2,40}?)\*\*/g,function(m,g){return (k++===p.i)?'\u0001':g;});ctx=plain(p.c.front);}
+    var cand=all.filter(function(a){return a.toLowerCase()!==p.ans.toLowerCase();}).sort(function(a,b){return Math.abs(a.length-p.ans.length)-Math.abs(b.length-p.ans.length)+(r()-0.5)*6;}).slice(0,12);
+    var dis=mcOpts(p.ans,cand,r,3);if(dis.length<3)return;
+    seenC[p.c.key]=1;
+    items.push(mcItem({kind:'cloze',key:p.c.key,ctx:ctx,prompt:fmt(txt).replace(/\u0001/g,BLANKH),ans:p.ans,dis:dis,why:'<b>'+esc(p.ans)+'</b>'+(p.mode==='d'?'':'')},r));
+  });
+  return items;
+}
+var NUMU='KIAS|KCAS|KTAS|KTS|kts|kt|knots|MHz|kHz|feet|ft|NM|nm|SM|statute miles?|nautical miles?|miles|hours?|hrs?|minutes?|mins?|seconds?|days?|calendar months?|months?|years?|gallons?|gal|psi|lbs?|pounds|RPM|inches|inHg|degrees|mph|volts?|amps?|percent|%|°C|°F|°';
+function numMatches(t){
+  var re=new RegExp('(^|[^\\w.])(\\d{1,3}(?:,\\d{3})+|\\d+(?:\\.\\d+)?)\\s?('+NUMU+')(?![A-Za-z])','g'),o=[],x;
+  while((x=re.exec(t)))o.push({n:x[2],u:x[3],s:x[2]+(t.substr(x.index+x[1].length+x[2].length,1)===' '?' ':'')+x[3]});
+  return o;
+}
+function fmtNum(v,dec,comma){var s=dec?v.toFixed(dec):String(Math.round(v));return comma?s.replace(/\B(?=(\d{3})+(?!\d))/g,','):s;}
+function numItems(r,max){
+  var cards=[],items=[];
+  activeCards().forEach(function(c){
+    if(c.type==='cloze'||(gopts.verified&&c.verify))return;
+    var b=plain(c.back),f=plain(c.front);
+    if(b.indexOf('\n')>-1||b.length>170||f.length>220)return;
+    var m=numMatches(b);if(m.length!==1)return;
+    if(f.indexOf(m[0].n)>-1)return;
+    cards.push({c:c,m:m[0]});
+  });
+  shufR(cards,r).forEach(function(x){
+    if(items.length>=max)return;
+    var m=x.m,comma=m.n.indexOf(',')>-1,clean=m.n.replace(/,/g,''),v=parseFloat(clean),dec=(clean.split('.')[1]||'').length;
+    var sp=m.s.slice(m.n.length,m.s.length-m.u.length);
+    var same=cards.filter(function(y){return y!==x&&y.m.u===m.u&&y.m.n!==m.n;}).map(function(y){return y.m.s;});
+    var gen=[];
+    [0.1,0.2,0.3,0.5].forEach(function(p){[1,-1].forEach(function(sg){
+      var w=v*(1+sg*p);if(dec){var st=Math.pow(10,-dec);w=Math.round(w/st)*st;}else if(v>=100)w=Math.round(w/5)*5;else if(v>=20)w=Math.round(w/5)*5;else w=Math.round(w);
+      if(w>0&&w!==v)gen.push(fmtNum(w,dec,comma)+sp+m.u);});});
+    if(dec)[1,2,5].forEach(function(k){var st=Math.pow(10,-dec)*k;[1,-1].forEach(function(sg){var w=v+sg*st;if(w>0)gen.push(fmtNum(w,dec,comma)+sp+m.u);});});
+    var dis=mcOpts(m.s,shufR(same,r).slice(0,2),r,2);
+    mcOpts(m.s,gen.filter(function(g){return dis.indexOf(g)<0;}),r,3-dis.length).forEach(function(g){dis.push(g);});
+    if(dis.length<3)return;
+    items.push(mcItem({kind:'num',key:x.c.key,ctx:areaOf(x.c),prompt:fmt(x.c.front),ans:m.s,dis:dis,why:fmt(x.c.back)},r));
+  });
+  return items;
+}
+function speedItems(r,max){
+  var pool=gamePool('speed'),dp=shortBacks(),out=[];
+  shufR(pool,r).forEach(function(c){
+    if(out.length>=max)return;
+    var d=distractors(c,dp,3);if(d.length<3)return;
+    out.push(mcItem({kind:'speed',key:c.key,ctx:areaOf(c),prompt:fmt(c.front),ans:plain(c.back).trim(),dis:d,why:fmt(c.back)},r));
+  });
+  return out;
+}
+function startMc(kind,items,dur,title){
+  if(!items.length){toast('Not enough material for this game in the selected decks.');return;}
+  game={type:'mc',kind:kind,title:title||kind,phase:'play',items:items,i:0,score:0,right:0,streak:0,maxStreak:0,wrong:[],pick:-1,dur:dur||0,t0:Date.now(),timer:null,to:null,locked:false};
+  if(dur)game.timer=setInterval(mcTick,100);
+  view='games';render();
+}
+function mcLeft(){return Math.max(0,game.dur-(Date.now()-game.t0));}
+function mcTick(){
+  if(!game||game.type!=='mc'||game.phase!=='play'||!game.dur)return;
+  var l=mcLeft(),b=$('gbar'),t=$('gtime');if(b)b.style.width=(100*l/game.dur)+'%';if(t)t.textContent=Math.ceil(l/1000)+'s';
+  if(l<=0)endMc();
+}
+function paintMc(){
+  var g=game;
+  if(g.phase==='end'){
+    var n=g.right+g.wrong.length,acc=n?Math.round(100*g.right/n):0;
+    var h='<h1>'+(g.kind==='daily'?'Daily challenge done':'Round over')+'</h1><div class="grid"><div class="stat"><b>'+g.right+'<small> / '+g.items.length+(g.dur?'':'')+'</small></b><span>correct</span></div>'+(g.dur?'<div class="stat"><b>'+g.score+'</b><span>score'+(g.newBest?' (new best!)':'')+'</span></div>':'')+'<div class="stat"><b>'+acc+'%</b><span>accuracy</span></div>'+(g.kind==='daily'?'<div class="stat"><b>'+(S.dc.streak||0)+'</b><span>day streak</span></div>':'<div class="stat"><b>'+g.maxStreak+'</b><span>best streak</span></div>')+'</div>';
+    if(g.wrong.length){h+='<h2>Missed ('+g.wrong.length+')</h2><div class="card list">';g.wrong.forEach(function(it){h+='<div class="item"><div class="main"><div class="t">'+it.prompt+'</div><div class="m">'+esc(it.ans)+(it.key?' (back in your reviews)':'')+'</div></div></div>';});h+='</div>';}
+    h+='<div class="row" style="margin-top:18px">'+(g.kind==='daily'?'<button class="btn" data-act="g_mix">Keep practising</button>':'<button class="btn" data-act="g_'+g.kind+'">Play again</button>')+'<button class="btn ghost" data-act="g_menu">Back to games</button></div>';
+    mainEl.innerHTML=h;return;
+  }
+  var it=g.items[g.i];
+  var h2='<div class="study"><div class="gtop">'+(g.dur?'<span id="gtime">'+Math.ceil(mcLeft()/1000)+'s</span><span class="gs">Score <b>'+g.score+'</b></span><span class="gs">Streak <b>'+g.streak+'</b></span>':'<span>'+esc(g.title)+'</span><span class="gs">'+(g.i+1)+' / '+g.items.length+'</span><span class="gs">Correct <b>'+g.right+'</b></span>')+'</div>';
+  if(g.dur)h2+='<div class="gbarw"><i id="gbar" style="width:'+(100*mcLeft()/g.dur)+'%"></i></div>';
+  h2+='<div class="card gq">'+(it.ctx?'<div class="cx">'+esc(it.ctx)+'</div>':'')+(it.raw?'<pre class="metar">'+esc(it.raw)+'</pre>':'')+'<div class="front">'+it.prompt+'</div></div><div class="gopts">';
+  it.opts.forEach(function(o,i){var cls='gopt';if(g.pick>-1){if(i===it.ai)cls+=' good';else if(i===g.pick)cls+=' bad';}h2+='<button class="'+cls+'" data-act="mc_ans" data-i="'+i+'"><kbd>'+(i+1)+'</kbd> '+esc(o)+'</button>';});
+  h2+='</div>';
+  if(g.pick>-1&&!g.dur)h2+='<div class="card panel" style="margin-top:12px"><div class="hd">'+(g.pick===it.ai?'Correct':'Not quite')+'</div><div>'+(it.why||'')+'</div></div><div class="row" style="margin-top:12px"><button class="btn" data-act="mc_next">'+(g.i+1>=g.items.length?'Finish':'Next')+'</button><span class="hint">Space or Enter</span></div>';
+  else if(g.pick>-1&&g.dur&&it.why)h2+='<div class="card panel" style="margin-top:12px"><div>'+it.why+'</div></div>';
+  mainEl.innerHTML=h2+'</div>';
+}
+function mcAnswer(i){
+  var g=game;if(!g||g.type!=='mc'||g.phase!=='play'||g.pick>-1||g.locked)return;
+  if(g.dur&&mcLeft()<=0)return;
+  var it=g.items[g.i],ok=i===it.ai;g.pick=i;
+  var c=it.key?getCard(it.key):null;
+  if(ok){g.right++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=g.dur?10*Math.min(5,1+Math.floor((g.streak-1)/3)):10;if(c)gameMark(c,false);else{var t=today();S.history[t]=(S.history[t]||0)+1;}}
+  else{g.streak=0;g.wrong.push(it);if(c)gameMark(c,true);}
+  save();paintMc();
+  if(g.dur){g.locked=true;g.to=setTimeout(function(){if(!game||game.type!=='mc')return;game.locked=false;mcNext();},ok?500:1500);}
+}
+function mcNext(){
+  var g=game;if(!g||g.type!=='mc'||g.phase!=='play'||g.pick<0)return;
+  g.i++;g.pick=-1;
+  if(g.i>=g.items.length||(g.dur&&mcLeft()<=0))endMc();else paintMc();
+}
+function endMc(){
+  var g=game;if(!g||g.phase==='end')return;
+  stopGame();g.phase='end';
+  var key='mc:'+g.kind,b=bestOf(key);g.newBest=g.score>(b.best||0);
+  setBest(key,{best:Math.max(b.best||0,g.score),plays:(b.plays||0)+1});
+  if(g.kind==='daily'){
+    var t=today(),y=ymd(new Date(Date.now()-DAY));
+    if(S.dc.date!==t){S.dc.streak=(S.dc.date===y)?(S.dc.streak||0)+1:1;S.dc.date=t;S.dc.right=g.right;S.dc.n=g.items.length;S.dc.best=Math.max(S.dc.best||0,S.dc.streak);}
+  }
+  save();render();
+}
+function ymd(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+/* sequences (order the steps) and mnemonics share one engine */
+function stripStep(s){return s.replace(/\*\*/g,'').trim();}
+function orderPool(){
+  var out=[];
+  activeCards().forEach(function(c){
+    if(c.type==='cloze'||(gopts.verified&&c.verify))return;
+    var lines=String(c.back||'').split('\n');
+    if(lines.some(function(l){return /^\s*IF\b/.test(l);}))return;
+    var steps=[],bold=0,lead=true,n=0;
+    for(var i=0;i<lines.length;i++){
+      var m=/^\s*(\*\*)?(\d+)\.\s+(.+?)(\*\*)?\s*$/.exec(lines[i]);
+      if(!m){if(steps.length&&lines[i].trim()==='')break;continue;}
+      if(parseInt(m[2],10)!==steps.length+1)break;
+      steps.push(stripStep(m[3]));if(lead&&m[1])bold++;else lead=false;
+    }
+    var use=bold>=3?steps.slice(0,bold):steps.slice(0,8);
+    if(use.length<3||use.length>9)return;
+    var seen={},dup=use.some(function(s){var k=s.toLowerCase();if(seen[k])return true;seen[k]=1;return false;});
+    if(dup)return;
+    out.push({kind:'order',key:c.key,title:plain(c.front).split(':')[0],sub:bold>=3?'Memory items in order':'First steps in order',labels:use.map(function(_,i){return String(i+1);}),steps:use});
+  });
+  return out;
+}
+function mnemList(){
+  var out=[];
+  selIds().forEach(function(id){var d=S.decks[id];(d.mnemonics||[]).forEach(function(m){
+    if(gopts.verified&&m.verify)return;
+    out.push({kind:'mnem',title:m.title,sub:'Fill in what each letter stands for',acr:m.acronym||m.items.map(function(x){return (x.l||x.w[0]).toUpperCase();}).join(''),labels:m.items.map(function(x){return (x.l||x.w[0]).toUpperCase();}),steps:m.items.map(function(x){return x.w;}),det:m.items.map(function(x){return x.d||'';}),note:m.note||'',verify:!!m.verify});});});
+  return out;
+}
+function startSeq(kind){
+  var list=kind==='order'?orderPool():mnemList();
+  if(!list.length){toast(kind==='order'?'No cards with numbered steps in this selection.':'No mnemonics in the selected decks. Import the mnemonics deck.');return;}
+  game={type:'seq',kind:kind,phase:'play',list:shuffle(list).slice(0,kind==='order'?6:8),i:0,perfect:0,mist:0,res:[],timer:null,to:null};
+  seqSetup();view='games';render();
+}
+function seqSetup(){var it=game.list[game.i];game.cur=shuffle(it.steps.map(function(s,i){return i;}));game.placed=0;game.m=0;game.flash=-1;game.done=false;}
+function paintSeq(){
+  var g=game;
+  if(g.phase==='end'){
+    var h='<h1>Round complete</h1><div class="grid"><div class="stat"><b>'+g.perfect+'<small> / '+g.list.length+'</small></b><span>with no mistakes</span></div><div class="stat"><b>'+g.mist+'</b><span>mistakes</span></div></div>';
+    h+='<div class="card list" style="margin-top:14px">';g.res.forEach(function(r){h+='<div class="item"><div class="main"><div class="t">'+esc(r.t)+'</div></div><span class="chip'+(r.m?'':' ok')+'">'+(r.m?r.m+' mistake'+(r.m===1?'':'s'):'perfect')+'</span></div>';});h+='</div>';
+    h+='<div class="row" style="margin-top:18px"><button class="btn" data-act="g_'+g.kind+'">Play again</button><button class="btn ghost" data-act="g_menu">Back to games</button></div>';
+    mainEl.innerHTML=h;return;
+  }
+  var it=g.list[g.i];
+  var h2='<div class="study"><div class="gtop"><span>'+(g.kind==='order'?'Order the steps':'Mnemonic builder')+'</span><span class="gs">'+(g.i+1)+' / '+g.list.length+'</span><span class="gs">Mistakes <b>'+g.m+'</b></span></div>';
+  h2+='<div class="card gq"><div class="cx">'+esc(it.sub)+'</div><div class="front">'+esc(it.title)+(it.acr?' <span class="acr">'+esc(it.acr)+'</span>':'')+'</div></div><div class="slots">';
+  it.steps.forEach(function(s,i){
+    var f=i<g.placed;
+    h2+='<div class="slot'+(f?' filled':'')+'"><b>'+esc(it.labels[i])+'</b><span>'+(f?esc(s):'&nbsp;')+'</span></div>';
+  });
+  h2+='</div>';
+  if(!g.done){
+    h2+='<div class="chips2">';
+    g.cur.forEach(function(si,ci){if(si<0)return;h2+='<button class="gopt chipbtn'+(g.flash===ci?' bad':'')+'" data-act="seq_pick" data-i="'+ci+'">'+esc(it.steps[si])+'</button>';});
+    h2+='</div><div class="hint">Tap the next one. A wrong tap counts as a mistake and nothing is placed.</div>';
+  }else{
+    var dets=(it.det||[]).some(function(d){return d;});
+    if(dets)h2+='<div class="card panel"><div class="hd">What each one means</div><ul>'+it.steps.map(function(s,i){return '<li><b>'+esc(it.labels[i])+'</b> '+esc(s)+(it.det[i]?': '+esc(it.det[i]):'')+'</li>';}).join('')+'</ul></div>';
+    if(it.note)h2+='<p class="legend">'+esc(it.note)+'</p>';
+    if(it.verify)h2+='<p class="legend">This one is not from a checked source. Versions of this mnemonic vary, so confirm it with your instructor.</p>';
+    h2+='<div class="row" style="margin-top:12px"><button class="btn" data-act="seq_next">'+(g.i+1>=g.list.length?'Finish':'Next')+'</button></div>';
+  }
+  mainEl.innerHTML=h2+'</div>';
+}
+function seqPick(ci){
+  var g=game;if(!g||g.type!=='seq'||g.done)return;
+  var it=g.list[g.i],si=g.cur[ci];if(si<0)return;
+  if(it.steps[si].toLowerCase()===it.steps[g.placed].toLowerCase()){
+    g.cur[ci]=-1;g.placed++;g.flash=-1;
+    if(g.placed>=it.steps.length){g.done=true;g.res.push({t:it.title,m:g.m});if(!g.m)g.perfect++;g.mist+=g.m;
+      if(it.key){var c=getCard(it.key);if(c)gameMark(c,g.m>=2);save();}else{var t=today();S.history[t]=(S.history[t]||0)+1;save();}}
+  }else{g.m++;g.flash=ci;}
+  paintSeq();
+}
+function seqNext(){var g=game;if(!g||!g.done)return;g.i++;if(g.i>=g.list.length){g.phase='end';var b=bestOf('seq:'+g.kind);setBest('seq:'+g.kind,{plays:(b.plays||0)+1,perfect:Math.max(b.perfect||0,g.perfect)});save();render();}else{seqSetup();paintSeq();}}
+function normMnemonics(arr,fname){
+  if(arr==null)return [];
+  if(!Array.isArray(arr))throw new Error(fname+': "mnemonics" must be a list.');
+  return arr.map(function(m,i){
+    if(!m||typeof m.id!=='string'||!m.id||typeof m.title!=='string')throw new Error(fname+': mnemonic #'+(i+1)+' needs an id and a title.');
+    if(!Array.isArray(m.items)||m.items.length<2)throw new Error(fname+': mnemonic "'+m.id+'" needs at least two items.');
+    return {id:m.id,title:m.title,acronym:typeof m.acronym==='string'?m.acronym:'',note:typeof m.note==='string'?m.note:'',verify:!!m.verify,
+      items:m.items.map(function(x,j){if(!x||typeof x.w!=='string'||!x.w.trim())throw new Error(fname+': mnemonic "'+m.id+'" item '+(j+1)+' needs a word ("w").');return {w:x.w.trim(),l:typeof x.l==='string'&&x.l?x.l:'',d:typeof x.d==='string'?x.d:''};})};
+  });
+}
+/* weather decoding */
+var WXT={MI:'shallow',PR:'partial',BC:'patches of',DR:'low drifting',BL:'blowing',SH:'showers of',TS:'thunderstorm with',FZ:'freezing',DZ:'drizzle',RA:'rain',SN:'snow',SG:'snow grains',IC:'ice crystals',PL:'ice pellets',GR:'hail',GS:'small hail or snow pellets',UP:'unknown precipitation',BR:'mist',FG:'fog',FU:'smoke',VA:'volcanic ash',DU:'widespread dust',SA:'sand',HZ:'haze',PY:'spray',PO:'dust whirls',SQ:'squalls',FC:'funnel cloud or tornado',SS:'sandstorm',DS:'duststorm'};
+function wxDecode(tok){
+  var m=/^(\+|-|VC)?((?:MI|PR|BC|DR|BL|SH|TS|FZ)?)((?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)*)$/.exec(tok);
+  if(!m||(!m[2]&&!m[3]))return '';
+  var pre=m[1]==='-'?'light ':m[1]==='+'?'heavy ':'',ds=m[2],ph=m[3].match(/../g)||[],parts=[];
+  var d=ds?WXT[ds]:'';
+  if(ds==='TS'){var s=ph.map(function(p){return WXT[p];}).join(' and ');return (pre+'thunderstorm'+(s?' with '+s:'')+(m[1]==='VC'?' in the vicinity':''));}
+  var body=ph.map(function(p){return WXT[p];}).join(' and ');
+  var t=(m[1]==='VC'?'':pre)+(d?d+' ':'')+body;
+  if(m[1]==='VC')t=(d?d+' ':'')+body+' in the vicinity';
+  return t.replace(/\s+/g,' ').trim().replace(/ of( in the vicinity)?$/,'$1');
+}
+function parseMetar(raw){
+  var t=String(raw).trim().replace(/\s+/g,' ').replace(/^(METAR|SPECI)\s+/,'');
+  var ri=t.indexOf(' RMK'),body=ri>0?t.slice(0,ri):t,tk=body.split(' ');
+  var o={raw:t,sky:[],wx:[],station:tk[0]};
+  if(!/^[A-Z][A-Z0-9]{3}$/.test(o.station))return null;
+  for(var i=1;i<tk.length;i++){
+    var s=tk[i],m;
+    if((m=/^(\d{2})(\d{2})(\d{2})Z$/.exec(s))){o.day=m[1];o.hhmm=m[2]+m[3];}
+    else if((m=/^(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?KT$/.exec(s))){o.wind={vrb:m[1]==='VRB',dir:m[1]==='VRB'?0:parseInt(m[1],10),spd:parseInt(m[2],10),gst:m[3]?parseInt(m[3],10):0};}
+    else if(/^\d{3}V\d{3}$/.test(s)){}
+    else if((m=/^(P|M)?(\d+)SM$/.exec(s))){o.vis=parseFloat(m[2]);o.visP=m[1]||'';o.visTxt=(m[1]==='P'?'more than ':m[1]==='M'?'less than ':'')+m[2];}
+    else if((m=/^(M)?(\d)\/(\d)SM$/.exec(s))){var fr=parseInt(m[2],10)/parseInt(m[3],10);o.vis=(o.visWhole||0)+fr;o.visP=m[1]||'';o.visTxt=(m[1]?'less than ':'')+(o.visWhole?o.visWhole+' ':'')+m[2]+'/'+m[3];}
+    else if(/^\d$/.test(s)&&/^\d\/\dSM$/.test(tk[i+1]||'')){o.visWhole=parseInt(s,10);}
+    else if((m=/^(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?$/.exec(s))){o.sky.push({cov:m[1],h:parseInt(m[2],10)*100,t:m[3]||''});}
+    else if((m=/^VV(\d{3})$/.exec(s))){o.sky.push({cov:'VV',h:parseInt(m[1],10)*100,t:''});}
+    else if(/^(CLR|SKC)$/.test(s)){o.clear=true;}
+    else if((m=/^(M?\d{2})\/(M?\d{2})$/.exec(s))){var cv=function(x){return x[0]==='M'?-parseInt(x.slice(1),10):parseInt(x,10);};o.temp=cv(m[1]);o.dew=cv(m[2]);}
+    else if((m=/^A(\d{4})$/.exec(s))){o.alt=parseInt(m[1],10)/100;}
+    else if(wxDecode(s))o.wx.push(s);
+  }
+  if(!o.wind||o.vis==null||o.alt==null)return null;
+  var ce=null;o.sky.forEach(function(l){if((l.cov==='BKN'||l.cov==='OVC'||l.cov==='VV')&&(ce===null||l.h<ce))ce=l.h;});o.ceil=ce;
+  var vv=o.visP==='P'?7:(o.visP==='M'?Math.max(0,o.vis-0.01):o.vis),cat=0;
+  var cc=ce===null?0:(ce<500?3:ce<1000?2:ce<=3000?1:0),vc=vv<1?3:vv<3?2:vv<=5?1:0;
+  o.cat=['VFR','MVFR','IFR','LIFR'][Math.max(cc,vc)];
+  return o;
+}
+var WX_SAMPLES=['KDEN 271853Z 32018G28KT 10SM FEW080 SCT120 M02/M14 A3004','KSFO 271756Z 28008KT 3SM BR OVC006 14/13 A2998','KORD 271951Z 18014G24KT 2 1/2SM -RA BKN015 OVC030 09/07 A2981','KMSP 271853Z 00000KT 1/4SM FG VV002 02/02 A3012','KICT 271853Z 17012KT 10SM CLR 24/11 A2992','KPHX 271953Z VRB05KT 10SM FEW250 38/04 A2985','KATL 271952Z 24010KT 5SM -TSRA BKN040CB 26/23 A3001','KBOS 271854Z 04016G25KT 1SM +SN BKN008 OVC015 M01/M02 A2972','KMIA 271853Z 09008KT 6SM HZ SCT025 BKN250 29/24 A3005','KDFW 271753Z 36006KT P6SM FEW035 SCT200 18/16 A3010','KPDX 271853Z 20006KT 4SM BR BKN012 11/10 A3001','KLAS 271853Z 25025G38KT 6SM DU SCT100 31/M02 A2990'];
+function wxReports(){
+  var live=(S.wx&&S.wx.reports&&S.wx.reports.length)?S.wx.reports:null;
+  var src=live||WX_SAMPLES;
+  return {real:!!live,list:src.map(parseMetar).filter(Boolean)};
+}
+function windTxt(w){if(!w.vrb&&w.spd===0)return 'Calm';if(w.vrb)return 'Variable at '+w.spd+' knots';return pad3(w.dir)+'° at '+w.spd+' knots'+(w.gst?', gusting '+w.gst:'');}
+function pad3(n){n=((n-1+360)%360)+1;return ('00'+n).slice(-3);}
+function altTxt(a){return a.toFixed(2)+' inHg';}
+function ceilTxt(l){return l===null?'No ceiling':'Ceiling '+l.toLocaleString('en-US')+' ft AGL';}
+function wxQuestions(o,r){
+  var q=[],raw=o.raw;
+  var lay=null;o.sky.forEach(function(l){if(l.cov==='BKN'||l.cov==='OVC'||l.cov==='VV'){if(!lay||l.h<lay.h)lay=l;}});
+  // wind
+  (function(){var w=o.wind,ans=windTxt(w),dis=[];
+    if(w.vrb||w.spd===0){dis=['Calm','Variable at 5 knots','270° at 8 knots','180° at 12 knots, gusting 20','090° at 6 knots'].filter(function(x){return x!==ans;}).slice(0,3);}
+    else{[1,2,3,4,5,6].forEach(function(){var dd=pickR([30,40,60,90,120,150],r)*(r()<.5?-1:1),ds=pickR([3,4,5,6,8],r)*(r()<.5?-1:1);var n={vrb:false,dir:w.dir+dd,spd:Math.max(3,w.spd+ds),gst:w.gst?(r()<.5?0:w.gst+pickR([4,6,8],r)):(r()<.4?w.spd+pickR([8,10,12],r):0)};dis.push(windTxt(n));});}
+    dis=mcOpts(ans,dis,r,3);if(dis.length<3)return;
+    q.push({k:'wind',prompt:'What is the wind?',ans:ans,dis:dis,why:'The wind group reads <b>'+esc((/\S+KT/.exec(raw)||[''])[0])+'</b>: direction in degrees true that the wind is coming <i>from</i>, then speed (and gusts) in knots.'});})();
+  // crosswind
+  if(!o.wind.vrb&&o.wind.spd>=8){
+    var off=pickR([30,40,50,60,90],r)*(r()<.5?-1:1),rwn=Math.round(((o.wind.dir+off)%360+360)%360/10)||36,ang=(o.wind.dir-rwn*10)*Math.PI/180,xw=Math.round(o.wind.spd*Math.abs(Math.sin(ang))),hw=Math.round(o.wind.spd*Math.cos(ang));
+    var cd=[xw+2,xw+4,xw+6,Math.max(0,xw-2),Math.max(0,xw-4),xw+1,xw+3].map(function(x){return x+' knots';});
+    var ans2=xw+' knots',dis2=mcOpts(ans2,cd,r,3);
+    if(dis2.length===3)q.push({k:'xw',prompt:'Runway '+(rwn<10?'0':'')+rwn+' is in use. Using the steady wind (ignore gusts), what is the crosswind component?',ans:ans2,dis:dis2,why:'Crosswind = wind speed x sin(angle between wind and runway). Wind '+o.wind.spd+' kt at an angle of about '+Math.round(Math.abs(((o.wind.dir-rwn*10+540)%360)-180))+'° gives about '+xw+' kt crosswind and '+Math.abs(hw)+' kt '+(hw>=0?'headwind':'tailwind')+'.'});
+  }
+  // category
+  q.push({k:'cat',prompt:'What is the flight category?',ans:o.cat,dis:['VFR','MVFR','IFR','LIFR'].filter(function(x){return x!==o.cat;}),why:'Flight category uses the lower of ceiling and visibility. This report: '+(lay?'ceiling '+lay.h.toLocaleString('en-US')+' ft':'no ceiling')+', visibility '+esc(o.visTxt)+' SM, so <b>'+o.cat+'</b>. VFR: ceiling above 3,000 and visibility above 5. MVFR: 1,000 to 3,000 or 3 to 5. IFR: 500 to 999 or 1 to under 3. LIFR: below 500 or below 1.'});
+  // ceiling
+  (function(){var ans=ceilTxt(lay?lay.h:null),cd=[];
+    cd.push('No ceiling');
+    [lay?lay.h:2500].forEach(function(h){[0.5,2,3,0.3,1.5].forEach(function(f){var x=Math.max(100,Math.round(h*f/100)*100);if(!lay||x!==lay.h)cd.push('Ceiling '+x.toLocaleString('en-US')+' ft AGL');});});
+    var dis=mcOpts(ans,cd,r,3);if(dis.length<3)return;
+    q.push({k:'ceil',prompt:'What is the ceiling?',ans:ans,dis:dis,why:(lay?'The ceiling is the lowest <b>broken (BKN)</b>, <b>overcast (OVC)</b> or vertical visibility (VV) layer: '+lay.cov+' at '+lay.h.toLocaleString('en-US')+' ft AGL.':'Only FEW, SCT or clear skies are reported, so there is <b>no ceiling</b>. FEW and SCT do not make a ceiling.')});})();
+  // visibility
+  (function(){var vt=o.visTxt,ans=vt.charAt(0).toUpperCase()+vt.slice(1)+' statute miles';
+    var base=['1/4','1/2','1','2','3','4','5','6','10'].map(function(x){return x+' statute miles';}),dis=mcOpts(ans,base,r,3);
+    q.push({k:'vis',prompt:'What is the visibility?',ans:ans,dis:dis,why:'Visibility is reported in statute miles ending in SM. This report says <b>'+esc((/((?:\d+ )?[PM]?\d+(?:\/\d+)?SM)/.exec(raw)||['',''])[1])+'</b>.'});})();
+  // temp/dew
+  if(o.temp!=null&&o.dew!=null){
+    var sp=o.temp-o.dew,ans3=sp+'°C',dis3=mcOpts(ans3,[sp+1,sp+2,sp+3,sp+5,Math.max(0,sp-1),Math.max(0,sp-2),Math.max(0,sp-3)].map(function(x){return x+'°C';}),r,3);
+    if(dis3.length===3)q.push({k:'spread',prompt:'Temperature is '+o.temp+'°C and the dewpoint is '+o.dew+'°C. What is the temperature-dewpoint spread?',ans:ans3,dis:dis3,why:'Spread = '+o.temp+' - ('+o.dew+') = '+sp+'°C. A spread of about 3°C or less means fog or low cloud is possible, especially as the temperature falls.'});
+  }
+  // altimeter
+  (function(){var ans=altTxt(o.alt),cd=[],ds=[0.05,0.1,0.15,0.2,0.3,-0.05,-0.1,-0.15,-0.2,-0.3];ds.forEach(function(d){cd.push(altTxt(o.alt+d));});
+    var dis=mcOpts(ans,cd,r,3);q.push({k:'alt',prompt:'What altimeter setting is reported?',ans:ans,dis:dis,why:'The A group is the altimeter setting in inches of mercury: <b>A'+Math.round(o.alt*100)+'</b> = '+altTxt(o.alt)+'.'});})();
+  // phenomena
+  o.wx.forEach(function(tok){var dec=wxDecode(tok);if(!dec)return;
+    var pool=['light rain','heavy rain','light snow','heavy snow','mist','fog','haze','smoke','thunderstorm with rain','light drizzle','freezing rain','showers of rain','blowing snow','thunderstorm','hail','squalls','widespread dust','light rain showers'];
+    var dis=mcOpts(dec,pool.filter(function(x){return x!==dec;}),r,3);
+    q.push({k:'wx',prompt:'What does "'+esc(tok)+'" mean in this report?',ans:dec,dis:dis,why:'<b>'+esc(tok)+'</b> decodes as '+esc(dec)+'. A leading minus is light, a plus is heavy, no sign is moderate.'});});
+  // sky
+  var sl=o.sky.filter(function(l){return l.cov!=='VV';})[0];
+  if(sl){var CV={FEW:'few clouds (1/8 to 2/8 of the sky)',SCT:'scattered clouds (3/8 to 4/8 of the sky)',BKN:'broken clouds (5/8 to 7/8 of the sky)',OVC:'overcast (the whole sky)'};
+    var ans4=CV[sl.cov]+' at '+sl.h.toLocaleString('en-US')+' ft AGL',cd4=[];
+    Object.keys(CV).forEach(function(k){if(k!==sl.cov)cd4.push(CV[k]+' at '+sl.h.toLocaleString('en-US')+' ft AGL');});
+    cd4.push(CV[sl.cov]+' at '+(sl.h*10).toLocaleString('en-US')+' ft AGL');
+    q.push({k:'sky',prompt:'What does "'+sl.cov+(('00'+(sl.h/100)).slice(-3))+'" mean?',ans:ans4,dis:mcOpts(ans4,cd4,r,3),why:'Sky cover is a three-letter code then the height in hundreds of feet AGL. FEW and SCT are not ceilings; BKN and OVC are.'});}
+  return q.filter(function(x){return x.dis.length>=3;}).map(function(x){x.raw=raw;x.ctx=o.station+(x.ctx||'');return x;});
+}
+function wxItems(r,n){
+  var rp=wxReports(),out=[],ords=shufR(rp.list,r),i=0,guard=0;
+  while(out.length<n&&guard++<n*4&&ords.length){
+    var o=ords[i++%ords.length],qs=shufR(wxQuestions(o,r),r);
+    if(!qs.length)continue;
+    var x=qs[0],it=mcItem({kind:'wx',key:null,ctx:o.station+(rp.real?' (real report)':' (sample report)'),raw:x.raw,prompt:esc(x.prompt).replace(/&quot;/g,'"'),ans:x.ans,dis:x.dis,why:x.why},r);
+    out.push(it);
+  }
+  return out;
+}
+/* daily challenge */
+function dailyItems(){
+  var t=today(),r=rngFrom('daily-'+t),used={},out=[];
+  function take(list,n){list.forEach(function(it){if(n<=0)return;if(it.key&&used[it.key])return;if(it.key)used[it.key]=1;out.push(it);n--;});}
+  take(speedItems(r,2),2);take(clozeItems(r,1),1);take(numItems(r,1),1);
+  var w=wxItems(r,1);take(w,1);
+  if(out.length<5)take(speedItems(r,10).concat(clozeItems(r,10),numItems(r,10)),5-out.length);
+  return shufR(out,r).slice(0,5);
+}
+function startDaily(){
+  if(S.dc.date===today()){toast('Today\'s challenge is done. Come back tomorrow, or keep practising.');}
+  var it=dailyItems();startMc('daily',it,0,'Daily challenge');
+}
+function startMix(){
+  var r=Math.random,it=shufR(speedItems(r,4).concat(clozeItems(r,3),numItems(r,3),wxItems(r,2)),r);
+  startMc('mix',it,0,'Mixed practice');
+}
+/* weather source dialog */
+function openWx(){
+  var st=S.settings.wxStations||'';
+  var h='<div class="box"><h2>Real weather reports</h2><p class="sub">The weather service does not let web pages fetch its data directly, so this takes two taps. Open the link, copy the page text, then paste it here. The reports are saved on this device for offline practice.</p>'+
+    '<label class="label">Airports (ICAO codes, separated by commas)</label><input type="text" id="wx_st" value="'+esc(st)+'">'+
+    '<div class="row" style="margin-top:12px"><a class="btn ghost" id="wx_link" target="_blank" rel="noopener noreferrer" href="'+esc(wxUrl(st))+'">1. Open current METARs</a></div>'+
+    '<label class="label">2. Paste the reports here</label><textarea id="wx_txt" placeholder="KICT 271853Z 17012KT 10SM CLR 24/11 A2992..." style="min-height:130px"></textarea>'+
+    '<div class="row" style="margin-top:12px"><button class="btn" data-act="wx_save">Save reports</button><button class="btn ghost" data-act="wx_clip">Paste from clipboard</button><button class="btn ghost" data-act="closemodal">Close</button>'+((S.wx&&S.wx.reports&&S.wx.reports.length)?'<span class="sp"></span><button class="btn ghost small" data-act="wx_clear">Use samples again</button>':'')+'</div>'+
+    '<p class="legend">'+((S.wx&&S.wx.reports&&S.wx.reports.length)?S.wx.reports.length+' saved reports, last updated '+new Date(S.wx.t).toLocaleString()+'.':'Using built-in sample reports until you add real ones.')+' Training use only. Never use this app for flight planning; get an official briefing.</p></div>';
+  $('modal').innerHTML=h;$('modal').classList.add('on');
+}
+function wxUrl(st){var ids=String(st||'').replace(/[^A-Za-z0-9,]/g,'').toUpperCase();return 'https://aviationweather.gov/api/data/metar?ids='+encodeURIComponent(ids||'KICT')+'&format=raw';}
+function wxSave(txt){
+  var got=[],seen={};
+  String(txt).split(/\r?\n/).forEach(function(l){l=l.trim();if(!l)return;var o=parseMetar(l);if(o&&!seen[o.raw]){seen[o.raw]=1;got.push(o.raw);}});
+  if(!got.length){toast('No valid METARs found in that text.');return false;}
+  S.wx={t:Date.now(),reports:got.slice(0,80),src:'pasted'};save();toast(got.length+' reports saved');return true;
+}
+
 /* ---------- settings ---------- */
 function persistLabel(){
   return {granted:'on (the browser will not clear this data on its own)','not-granted':'not granted (keep making backups)',denied:'not granted (keep making backups)',unsupported:'not available in this browser (keep making backups)',unknown:'checking...'}[persistState]||'unknown';
@@ -1240,6 +1643,8 @@ function renderSettings(){
        '<label class="check"><input type="checkbox" id="sflight"'+(sb.flight?' checked':'')+'> This is a flight subject (shows the Checkride tab)</label>'+
        '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="newsubj">New subject</button><button class="btn ghost small" data-act="delsubj">Delete this subject</button></div>';
   }else h+='<div class="row" style="margin-top:14px"><button class="btn ghost small" data-act="newsubj">New subject</button></div>';
+  h+='<label class="label">Appearance</label><select id="themesel" style="max-width:200px">'+['auto','light','dark'].map(function(o){return '<option value="'+o+'"'+((S.settings.theme||'auto')===o?' selected':'')+'>'+{auto:'Match my device',light:'Light',dark:'Dark'}[o]+'</option>';}).join('')+'</select>'+
+     '<label class="label">Weather practice</label><p class="sub" style="margin:0 0 10px">Add real METARs for the weather decode game.</p><div class="row"><button class="btn ghost" data-act="wx_open">Add real METARs</button></div>';
   h+='<label class="label">Backup</label><p class="sub" style="margin:0 0 10px">Includes subjects, decks, your own cards, edits, progress and notes. '+(S.lastBackup?'Last backup: '+new Date(S.lastBackup).toLocaleString()+'.':'No backup yet.')+'</p>'+
      '<div class="row"><button class="btn" data-act="backup">Export backup</button><button class="btn ghost" data-act="import">Restore from backup</button></div>'+
      '<label class="label">Use on more than one device</label><p class="sub" style="margin:0 0 10px">Progress lives in each browser. To combine devices: export a backup on one, then choose Combine here on the other. The newest review of each card wins, notes are merged, and nothing is deleted. Do this in both directions to bring them level.</p><div class="row"><button class="btn ghost" data-act="mergeimport">Combine progress from a backup</button></div>'+
@@ -1263,10 +1668,11 @@ function newSubject(){
 var game=null,gopts={verified:true};
 function stopGame(){if(game){if(game.timer){clearInterval(game.timer);game.timer=null;}if(game.to){clearTimeout(game.to);game.to=null;}}}
 function resetGame(){stopGame();game=null;}
-function shortBacks(){return activeCards().filter(function(c){var b=plain(c.back);return b.length<=90&&b.indexOf('\n')<0;});}
+function shortBacks(){return activeCards().filter(function(c){if(c.type==='cloze')return false;var b=plain(c.back);return b.length<=90&&b.indexOf('\n')<0;});}
 function gamePool(kind){
   return activeCards().filter(function(c){
     if(gopts.verified&&c.verify)return false;
+    if(c.type==='cloze')return false;
     var f=plain(c.front),b=plain(c.back);
     if(b.indexOf('\n')>-1)return false;
     if(kind==='match')return f.length<=90&&b.length<=60;
@@ -1296,6 +1702,14 @@ function renderGames(){
     h+='<div class="grid gmenu">';
     h+='<div class="card gcard"><h3>Speed round</h3><p>60 seconds. Pick the right answer from four options. Streaks multiply your score.</p><div class="m">'+ps.length+' cards fit'+(bestOf('speed').best?' &middot; best '+bestOf('speed').best:'')+'</div><button class="btn" data-act="g_speed"'+(ps.length>=4?'':' disabled')+'>Play</button></div>';
     h+='<div class="card gcard"><h3>Match</h3><p>Match six questions to six answers as fast as you can.</p><div class="m">'+pm.length+' cards fit'+(bestOf('match').bestTime?' &middot; best '+bestOf('match').bestTime+'s':'')+'</div><button class="btn" data-act="g_match"'+(pm.length>=4?'':' disabled')+'>Play</button></div>';
+    var dcDone=S.dc.date===today(),dcy=ymd(new Date(Date.now()-DAY)),dcS=(S.dc.date===today()||S.dc.date===dcy)?(S.dc.streak||0):0;
+    var czOk=clozeItems(Math.random,1).length>0,nmOk=numItems(Math.random,1).length>0,od=orderPool().length,mn=mnemList().length,wr=wxReports();
+    h=h.replace('<div class="grid gmenu">','<div class="card gcard wide dcard"><h3>Daily challenge</h3><p>Five mixed questions that change every day. Finish one a day to build a streak.</p><div class="m">'+(dcDone?'Done today: '+S.dc.right+' of '+S.dc.n:'Not done yet')+' &middot; streak '+dcS+(S.dc.best?' &middot; best '+S.dc.best:'')+'</div><button class="btn" data-act="g_daily">'+(dcDone?'Review again':'Start')+'</button></div><div class="grid gmenu">');
+    h+='<div class="card gcard"><h3>Fill the blank</h3><p>A sentence with a key word missing. Pick what belongs there. Uses fill-in-the-blank cards and bold key terms on your cards.</p><div class="m">'+(czOk?'Ready':'Needs fill-in cards or cards with bold terms')+'</div><button class="btn" data-act="g_cloze"'+(czOk?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard"><h3>Number sprint</h3><p>60 seconds on speeds, limits, distances and times. Pick the right number.</p><div class="m">'+(nmOk?'Ready':'Needs cards whose answer is one number with a unit')+(bestOf('mc:num').best?' &middot; best '+bestOf('mc:num').best:'')+'</div><button class="btn" data-act="g_num"'+(nmOk?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard"><h3>Order the steps</h3><p>Tap the steps of a procedure in the right order, such as emergency memory items.</p><div class="m">'+od+' procedure'+(od===1?'':'s')+' found</div><button class="btn" data-act="g_order"'+(od?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard"><h3>Mnemonic builder</h3><p>Rebuild what each letter stands for, such as IMSAFE, PAVE and ARROW.</p><div class="m">'+mn+' mnemonic'+(mn===1?'':'s')+' in these decks</div><button class="btn" data-act="g_mnem"'+(mn?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard wide"><h3>Weather decode</h3><p>Read a METAR and answer: wind, crosswind, flight category, ceiling, visibility, spread and more.</p><div class="m">'+(wr.real?wr.list.length+' real reports saved':'Using sample reports. Add real ones to keep it fresh.')+'</div><div class="row"><button class="btn" data-act="g_wx">Play</button><button class="btn ghost" data-act="wx_open">Add real METARs</button></div></div>';
     h+='<div class="card gcard wide"><h3>Scenario flight</h3><p>Work through a situation one decision at a time and see why each choice is better or worse.</p><div class="m">'+sc.length+' scenario'+(sc.length===1?'':'s')+' in these decks</div>';
     if(sc.length){h+='<div class="scl">';sc.forEach(function(x,i){h+='<button class="btn ghost small" data-act="g_scen" data-i="'+i+'">'+esc(x.s.title)+(bestOf('s:'+x.s.id).best!=null?' &middot; best '+bestOf('s:'+x.s.id).best+'/'+x.s.steps.length:'')+'</button>';});h+='</div>';}
     else h+='<p class="legend">Import a deck with scenarios, or ask me to write some for your topic.</p>';
@@ -1306,6 +1720,8 @@ function renderGames(){
   if(game.type==='speed')return paintSpeed();
   if(game.type==='match')return paintMatch();
   if(game.type==='scen')return paintScen();
+  if(game.type==='mc')return paintMc();
+  if(game.type==='seq')return paintSeq();
 }
 
 /* speed round */
@@ -1712,7 +2128,7 @@ document.addEventListener('click',function(e){
     case 'exportdeck':{
       var dk=S.decks[el.getAttribute('data-d')];
       var cs=dk.cards.map(function(c){var m=applyOv(c,dk.id+':'+c.id);return{id:m.id,area:m.area,task:m.task,acs:m.acs,type:m.type,front:m.front,back:m.back,followups:m.followups,source:m.source,page:m.page||'',verify:!!m.verify,volatile:!!m.volatile,checked:m.checked||'',links:m.links||[],image:m.image||''};});
-      download(slug(dk.title)+'.deck.json',{format:'checkride-deck',version:1,deck:{id:dk.id,title:dk.title,standard:dk.standard,subject:(S.subjects[dk.subject]||{}).name||''},cards:cs,scenarios:dk.scenarios||[]});break;}
+      download(slug(dk.title)+'.deck.json',{format:'checkride-deck',version:1,deck:{id:dk.id,title:dk.title,standard:dk.standard,subject:(S.subjects[dk.subject]||{}).name||''},cards:cs,scenarios:dk.scenarios||[],mnemonics:dk.mnemonics||[]});break;}
     case 'backup':doBackup(false);toast('Backup exported. Move it to a safe folder such as iCloud Drive.');renderSettings();break;
     case 'reset':if(confirm('Erase all subjects, decks, progress, and notes from this browser? This cannot be undone.')&&confirm('Really erase everything?')){S=migrate(defaults());save();session=null;view='home';render();}break;
   }
@@ -1763,6 +2179,49 @@ document.addEventListener('keydown',function(e){
 });
 $('modal').addEventListener('click',function(e){if(e.target===$('modal'))closeModal();});
 
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='e_type'){
+    var cl=t.value==='cloze',a=$('e_flbl'),b=$('e_blbl'),btn=$('e_clbtn');
+    if(a)a.firstChild.nodeValue=cl?'Text (wrap hidden words in {{double braces}}) ':'Question ';
+    if(b)b.firstChild.nodeValue=cl?'Extra note (optional) ':'Answer ';
+    if(btn)btn.hidden=!cl;
+  }else if(t.id==='themesel'){S.settings.theme=t.value;save();applyTheme();toast('Theme: '+themeLabel());}
+});
+document.addEventListener('input',function(e){
+  if(e.target.id==='wx_st'){S.settings.wxStations=e.target.value;save();var l=$('wx_link');if(l)l.href=wxUrl(e.target.value);}
+});
+document.addEventListener('keydown',function(e){
+  if(!game||game.type!=='mc'||view!=='games'||game.phase!=='play')return;
+  var tag=(e.target.tagName||'').toLowerCase();if(tag==='textarea'||tag==='input'||$('modal').classList.contains('on'))return;
+  if('1234'.indexOf(e.key)>-1&&e.key){mcAnswer(parseInt(e.key,10)-1);}
+  else if((e.key==='Enter'||e.code==='Space')&&game.pick>-1&&!game.dur){e.preventDefault();mcNext();}
+});
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');if(!el)return;
+  var a=el.getAttribute('data-act');
+  switch(a){
+    case 'clozebtn':{var ta=$('e_front');if(!ta)break;var s=ta.selectionStart,e2=ta.selectionEnd;if(s===e2){toast('Select the words to hide first.');break;}ta.value=ta.value.slice(0,s)+'{{'+ta.value.slice(s,e2)+'}}'+ta.value.slice(e2);break;}
+    case 'theme':cycleTheme();closeModal();break;
+    case 'g_cloze':startMc('cloze',clozeItems(Math.random,10),0,'Fill the blank');break;
+    case 'g_num':startMc('num',numItems(Math.random,40),60000,'Number sprint');break;
+    case 'g_wx':startMc('wx',wxItems(Math.random,8),0,'Weather decode');break;
+    case 'g_daily':startDaily();break;
+    case 'g_mix':startMix();break;
+    case 'g_order':startSeq('order');break;
+    case 'g_mnem':startSeq('mnem');break;
+    case 'mc_ans':mcAnswer(parseInt(el.getAttribute('data-i'),10));break;
+    case 'mc_next':mcNext();break;
+    case 'seq_pick':seqPick(parseInt(el.getAttribute('data-i'),10));break;
+    case 'seq_next':seqNext();break;
+    case 'wx_open':openWx();break;
+    case 'wx_save':{var ta2=$('wx_txt');if(ta2&&wxSave(ta2.value)){closeModal();if(view==='games')render();}break;}
+    case 'wx_clip':{if(navigator.clipboard&&navigator.clipboard.readText){navigator.clipboard.readText().then(function(t){var x=$('wx_txt');if(x){x.value=t;toast('Pasted. Now tap Save reports.');}}).catch(function(){toast('Clipboard was blocked. Paste into the box by hand.');});}else toast('Clipboard is not available here. Paste into the box by hand.');break;}
+    case 'wx_clear':S.wx=null;save();closeModal();render();toast('Using sample reports');break;
+  }
+});
+
+applyTheme();
 snapshot();save();render();checkPersist();
 })();
 
