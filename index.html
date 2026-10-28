@@ -226,6 +226,27 @@ h1{font-size:26px}
 
 .gcard.wide{grid-column:1/-1}
 .gcard .scl{flex-direction:row;flex-wrap:wrap;gap:8px}
+/* v4 */
+.cimg{max-width:100%;max-height:230px;object-fit:contain;display:block;margin:12px auto 0;border-radius:10px}
+.cimg[hidden]{display:none}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+.mo-areas{display:grid;gap:2px}
+.printonly{display:none}
+.cheat{column-gap:28px}
+.cs-group{break-inside:avoid;margin-bottom:14px}
+.cs-group h3{margin:0 0 6px;font-size:14px;border-bottom:1px solid var(--line);padding-bottom:3px}
+.cs-item{padding:5px 0;font-size:14px}
+.cs-q{font-weight:600}
+.cs-a{color:var(--ink)}
+@media (min-width:900px){.cheat{columns:2}}
+@media print{
+  nav,#nav,#topbar,#toast,.noprint,#modal{display:none!important}
+  body,main,#main{background:#fff!important;color:#000!important;margin:0!important;padding:0!important}
+  .printonly{display:block}
+  .cheat{columns:2;font-size:11px}
+  .cs-item{padding:2px 0;font-size:11px}
+  h1,.sub,.seg{display:none!important}
+}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Study"><meta name="theme-color" content="#2f6bff"></head>
@@ -237,7 +258,7 @@ h1{font-size:26px}
 </div>
 <div id="modal"></div>
 <div id="toast"></div>
-<input type="file" id="fileIn" accept=".json,application/json" multiple hidden>
+<input type="file" id="fileIn" accept=".json,.csv,.tsv,.txt,application/json,text/csv,text/plain" multiple hidden>
 <script>
 (function(){
 'use strict';
@@ -245,7 +266,8 @@ var DAY=86400000;
 var KEY='checkride-study-v1',SNAPKEY='checkride-study-snap',UNDOKEY='checkride-study-before-restore',VER=3;
 
 /* ---------- storage ---------- */
-function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed'},daily:{date:'',newCount:0},history:{},lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
+var FLIGHT_RE=/pilot|flight|flying|aviation|checkride|aircraft|taefc/i;
+function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed'},daily:{date:'',newCount:0},history:{},cheat:{},mocks:[],lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
 function migrate(s){
   var base=defaults();for(var k in s)base[k]=s[k];
   var df=defaults().settings;if(!base.settings||typeof base.settings!=='object')base.settings={};
@@ -253,11 +275,14 @@ function migrate(s){
   if(!base.sel||typeof base.sel!=='object')base.sel={};
   if(!base.sets||typeof base.sets!=='object')base.sets={};
   s=base;
+  if(!s.cheat||typeof s.cheat!=='object')s.cheat={};
+  if(!Array.isArray(s.mocks))s.mocks=[];
   var ids=Object.keys(s.decks),orphan=ids.filter(function(i){return !s.decks[i].subject;});
   if(orphan.length){
     if(!s.subjects['private-pilot'])s.subjects['private-pilot']={id:'private-pilot',name:'Private Pilot',examDate:''};
     orphan.forEach(function(i){s.decks[i].subject='private-pilot';});
   }
+  Object.keys(s.subjects).forEach(function(k){var x=s.subjects[k];if(x.flight===undefined)x.flight=FLIGHT_RE.test(x.name||'');});
   var sk=Object.keys(s.subjects);
   if(!s.currentSubject||!s.subjects[s.currentSubject])s.currentSubject=sk[0]||'';
   s.v=VER;return s;
@@ -431,7 +456,7 @@ function schedule(p,r){
     else{s.ease=s.ease+0.15;s.interval=s.interval<1?4:Math.max(s.interval+2,Math.round(s.interval*s.ease*1.3));}
     s.reps++;s.due=now+s.interval*DAY;
   }
-  return s;
+  s.last=now;return s;
 }
 function newLeft(){var used=(S.daily.date===today())?S.daily.newCount:0;return Math.max(0,(S.settings.newPerDay|0)-used);}
 function interleave(cards){
@@ -463,21 +488,26 @@ var lib={topic:null,filter:'all',q:'',sel:{}};
 var navEl=$('nav'),mainEl=$('main');
 
 /* ---------- render ---------- */
-function render(){if(view!=='games')stopGame();renderNav();
+function render(){if(view!=='games')stopGame();if(view==='checkride'&&!isFlight())view='home';renderNav();
   if(!Object.keys(S.subjects).length&&view!=='settings'){renderWelcome();return;}
-  if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else renderSettings();
+  if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else if(view==='checkride')renderCheckride();else renderSettings();
 }
-var ICONS={home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',study:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v11"/>',games:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',library:'<path d="M4 4h5v16H4zM11 4h4v16h-4zM17.5 5.5l3.2.9-3.6 13.6-3.2-.9z"/>',more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',verify:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.4-1 .9-1 1.6M12 17h.01"/>'};
+var ICONS={check:'<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',study:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v11"/>',games:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',library:'<path d="M4 4h5v16H4zM11 4h4v16h-4zM17.5 5.5l3.2.9-3.6 13.6-3.2-.9z"/>',more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',verify:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.4-1 .9-1 1.6M12 17h.01"/>'};
 function ic(n){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[n]+'</svg>';}
 function subjOpts(){
-  var h='';Object.keys(S.subjects).forEach(function(k){h+='<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';});
+  var h='';var ks=Object.keys(S.subjects),fl=ks.filter(function(k){return S.subjects[k].flight;}),ot=ks.filter(function(k){return !S.subjects[k].flight;});
+  function opt(k){return '<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';}
+  if(fl.length&&ot.length){h+='<optgroup label="Flight">'+fl.map(opt).join('')+'</optgroup><optgroup label="Other courses">'+ot.map(opt).join('')+'</optgroup>';return h+'<option value="__new">+ New subject...</option>';}
+  Object.keys(S.subjects).forEach(function(k){h+='<option value="'+esc(k)+'"'+(k===S.currentSubject?' selected':'')+'>'+esc(S.subjects[k].name)+'</option>';});
   return h+'<option value="__new">+ New subject...</option>';
 }
 function renderNav(){
   var sk=Object.keys(S.subjects);
   var q=sk.length?dueQueue(activeCards()).length:0,vc=sk.length?allCards().filter(attn).length:0;
   var h='<div class="brand">Study Library</div><div class="subjsel"><select id="subjSel" aria-label="Subject">'+subjOpts()+'</select></div>';
-  [['home','Home'],['study','Study'],['games','Games'],['library','Library']].forEach(function(it){
+  var pri=[['home','Home'],['study','Study'],['games','Games'],['library','Library']];
+  if(sk.length&&isFlight())pri.push(['checkride','Checkride']);
+  pri.forEach(function(it){
     var n=it[0]==='study'?q:0;
     h+='<button class="nv pri'+(view===it[0]?' on':'')+'" data-act="nav" data-v="'+it[0]+'">'+ic(it[0])+'<span class="lb">'+it[1]+'</span>'+(n?'<span class="pill">'+n+'</span>':'')+'</button>';
   });
@@ -598,7 +628,7 @@ function renderStudy(){
   if(c.edited)h+='<span class="chip">edited</span>';
   h+='</div>';
   h+='<div class="scene"><div class="flipper card'+(s.revealed?' flipped':'')+'" id="flipper" data-act="flipcard">'+
-     '<div class="face fr"><span class="tag">Question</span><div class="front">'+fmt(c.front)+'</div></div>'+
+     '<div class="face fr"><span class="tag">Question</span><div class="front">'+fmt(c.front)+'</div>'+imgHtml(c)+'</div>'+
      '<div class="face bk"><span class="tag">Answer</span><div class="ans">'+fmt(c.back)+'</div></div></div></div>';
   h+='<div class="tap" id="tap">'+(s.revealed?'Click the card to flip it back':'Click the card or press <kbd>Space</kbd> to reveal the answer')+'</div>';
   h+='<div class="below" id="below"'+(s.revealed?'':' hidden')+'>';
@@ -614,7 +644,7 @@ function renderStudy(){
   h+='</div>';
   h+='<div class="row" style="margin-top:16px"><button class="btn ghost small" data-act="prev"'+(s.idx?'':' disabled')+'>&larr; Back</button><button class="btn ghost small" data-act="next">Skip &rarr;</button><span class="sp"></span>'+
      '<button class="btn ghost small" data-act="flag" data-k="'+esc(c.key)+'">'+(S.flags[c.key]?'Unflag':'Flag')+'</button>'+
-     '<button class="btn ghost small" data-act="editcard" data-k="'+esc(c.key)+'">Edit card</button>'+
+     '<button class="btn ghost small" data-act="editcard" data-k="'+esc(c.key)+'">Edit card</button>'+(isFlight()?'<button class="btn ghost small" data-act="cheattog" data-k="'+esc(c.key)+'">'+(S.cheat[c.key]?'On cheat sheet':'Cheat sheet')+'</button>':'')+
      '<button class="btn ghost small" data-act="home">End session</button></div></div>';
   mainEl.innerHTML=h;
 }
@@ -724,44 +754,6 @@ function bindSearch(){
 function currentList(){return allCards().filter(function(c){return (lib.topic===null||areaOf(c)===lib.topic)&&matches(c);});}
 
 /* ---------- card editor ---------- */
-function openEditor(key){
-  var c=key?getCard(key):null,isNew=!c;
-  var sid=S.currentSubject;
-  var topics={};allCards().forEach(function(x){topics[areaOf(x)]=1;});
-  var v=c||{area:lib.topic||'',task:'',front:'',back:'',followups:[],source:'',verify:false,type:'',page:'',links:[],volatile:false,checked:''};
-  var h='<div class="box"><h2>'+(isNew?'Write a card':'Edit card')+'</h2><p class="sub" style="margin-bottom:0">'+(isNew?'Saved in "My cards" for '+esc(subj().name)+'.':(S.decks[c.deckId]&&S.decks[c.deckId].custom?'This is one of your own cards.':'Edits are kept on top of the imported deck, so re-importing will not overwrite them. You can revert at any time.'))+'</p>'+
-    '<label class="label">Topic</label><input type="text" id="e_area" list="topiclist" value="'+esc(v.area)+'" placeholder="e.g. Airspace, Chapter 4, Depreciation"><datalist id="topiclist">'+Object.keys(topics).sort().map(function(t){return '<option value="'+esc(t)+'">';}).join('')+'</datalist>'+
-    '<div class="two"><div><label class="label">Sub-topic <small>(optional)</small></label><input type="text" id="e_task" value="'+esc(v.task||'')+'"></div><div><label class="label">Reference <small>(optional, e.g. ACS code)</small></label><input type="text" id="e_acs" value="'+esc(v.acs||'')+'"></div></div>'+
-    '<label class="label">Question <button class="btn ghost small" type="button" data-act="bold" data-t="e_front">Bold</button></label><textarea id="e_front">'+esc(v.front)+'</textarea>'+
-    '<label class="label">Answer <button class="btn ghost small" type="button" data-act="bold" data-t="e_back">Bold</button> <small>Select text and press Bold (or Ctrl+B) to mark memory items. In files, bold is written as **text**.</small></label><textarea id="e_back" style="min-height:110px">'+esc(v.back)+'</textarea>'+
-    '<label class="label">Likely follow-ups <small>(one per line)</small></label><textarea id="e_fu">'+esc((v.followups||[]).join('\n'))+'</textarea>'+
-    '<div class="two"><div><label class="label">Source <small>(optional)</small></label><input type="text" id="e_src" value="'+esc(v.source||'')+'"></div><div><label class="label">Page / section <small>(optional, e.g. POH 3-5 or Oral Exam Guide p. 112)</small></label><input type="text" id="e_page" value="'+esc(v.page||'')+'"></div></div>'+
-    '<label class="label">Resources <small>(one per line: <i>label | https://link</i>, or <i>search: topic</i> for a YouTube search)</small></label><textarea id="e_links" placeholder="Weather minimums explained | https://...">'+esc(fmtLinks(v.links))+'</textarea>'+
-    '<label class="check"><input type="checkbox" id="e_vol"'+(v.volatile?' checked':'')+'> Depends on rules that change (regulations, club rules, charts). Remind me to re-check it.</label>'+
-    '<label class="label">Last checked against the source <small>(optional)</small></label><input type="date" id="e_chk" value="'+esc(v.checked||'')+'" style="max-width:200px">'+
-    '<label class="check"><input type="checkbox" id="e_ver"'+(v.verify?' checked':'')+'> Needs verification against the source</label>'+
-    '<div class="row" style="margin-top:20px"><button class="btn" data-act="savecard" data-k="'+esc(key||'')+'">Save</button><button class="btn ghost" data-act="closemodal">Cancel</button><span class="sp"></span>';
-  if(c&&c.hasOv)h+='<button class="btn ghost small" data-act="revertcard" data-k="'+esc(key)+'">Revert to original</button>';
-  if(c&&S.decks[c.deckId]&&S.decks[c.deckId].custom)h+='<button class="btn danger small" data-act="delcard" data-k="'+esc(key)+'">Delete</button>';
-  h+='</div></div>';
-  $('modal').innerHTML=h;$('modal').classList.add('on');
-  setTimeout(function(){var f=$(isNew?'e_area':'e_front');if(f)f.focus();},30);
-}
-function closeModal(){$('modal').classList.remove('on');$('modal').innerHTML='';}
-function saveEditor(key){
-  var front=$('e_front').value.trim(),back=$('e_back').value.trim();
-  if(!front||!back){toast('A card needs a question and an answer.');return;}
-  var pl=parseLinks($('e_links').value);
-  if(pl.bad){toast(pl.bad+' resource line'+(pl.bad===1?'':'s')+' not saved: links must start with http:// or https://');return;}
-  var patch={page:$('e_page').value.trim(),links:pl.links,volatile:$('e_vol').checked,checked:$('e_chk').value,area:$('e_area').value.trim(),task:$('e_task').value.trim(),acs:$('e_acs').value.trim(),front:front,back:back,
-    followups:$('e_fu').value.split('\n').map(function(x){return x.trim();}).filter(Boolean),source:$('e_src').value.trim(),verify:$('e_ver').checked};
-  if(!key){
-    var d=myDeck(S.currentSubject);patch.id=uid();patch.type='';d.cards.push(patch);save();
-    toast('Card added');
-  }else{updateCard(key,patch);toast('Saved');}
-  closeModal();render();
-}
-
 /* ---------- import / export ---------- */
 function download(name,obj){
   var blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
@@ -772,7 +764,7 @@ function download(name,obj){
 function ensureSubject(name){
   var id=slug(name);
   for(var k in S.subjects)if(k===id||S.subjects[k].name.toLowerCase()===String(name).toLowerCase())return k;
-  S.subjects[id]={id:id,name:name,examDate:''};return id;
+  S.subjects[id]={id:id,name:name,examDate:'',flight:FLIGHT_RE.test(name)};return id;
 }
 function normScenarios(arr,fname){
   if(arr==null)return [];
@@ -802,7 +794,7 @@ function importDeck(obj,fname){
     seen[c.id]=1;
     cards.push({id:c.id,area:c.area||'',task:c.task||'',acs:c.acs||'',type:c.type||'',front:c.front,back:c.back,
       followups:Array.isArray(c.followups)?c.followups.filter(function(x){return typeof x==='string';}):[],source:c.source||'',verify:!!c.verify,
-      page:typeof c.page==='string'?c.page:'',volatile:!!c.volatile,checked:/^\d{4}-\d{2}-\d{2}$/.test(c.checked||'')?c.checked:'',links:normLinks(c.links)});
+      image:safeImg(c.image),page:typeof c.page==='string'?c.page:'',volatile:!!c.volatile,checked:/^\d{4}-\d{2}-\d{2}$/.test(c.checked||'')?c.checked:'',links:normLinks(c.links)});
   });
   var old=S.decks[d.id],sid,added=cards.length,removed=0;
   if(old){var oi={},ni={};old.cards.forEach(function(x){oi[x.id]=1;});cards.forEach(function(x){ni[x.id]=1;});
@@ -838,12 +830,21 @@ function clearFlags(k){
   if(Object.keys(patch).length)updateCard(k,patch);
 }
 function handleFiles(files){
+  if(!files.length)mergeMode=false;
   var list=Array.prototype.slice.call(files),msgs=[],pending=list.length;if(!pending)return;
   list.forEach(function(f){
     var r=new FileReader();
     r.onload=function(){
       try{
+        if(/\.(csv|tsv|txt)$/i.test(f.name)){
+          var cr=importCsv(r.result,f.name);
+          if(cr)msgs.push('Imported '+cr.title+' ('+cr.n+' cards'+(cr.skipped?', '+cr.skipped+' rows skipped':'')+') in '+cr.subject);
+          else msgs.push('Import cancelled');
+          if(--pending===0){save();toast(summarize(msgs));render();}
+          return;
+        }
         var obj=JSON.parse(r.result);
+        if(mergeMode&&obj&&obj.format==='checkride-backup'){msgs.push(mergeBackup(obj));if(--pending===0){mergeMode=false;toast(summarize(msgs));render();}return;}
         if(obj&&obj.format==='checkride-backup'){
           var bd=obj.data||{},nd=Object.keys(bd.decks||{}),nc=0;nd.forEach(function(i){nc+=((bd.decks[i]||{}).cards||[]).length;});
           if(confirm('Restore this backup'+(obj.exported?' (made '+new Date(obj.exported).toLocaleString()+')':'')+'?\n\nIt contains '+nd.length+' decks, '+nc+' cards, and progress on '+Object.keys(bd.progress||{}).length+' cards. It replaces everything currently in the app. You can undo the restore from Settings.')){importBackup(obj);msgs.push('Backup restored. Undo is available in Settings.');}
@@ -858,6 +859,357 @@ function handleFiles(files){
     r.readAsText(f);
   });
 }
+
+/* ---------- v4: images, CSV, merge, checkride ---------- */
+function isFlight(){var s=subj();return !!(s&&s.flight);}
+function safeImg(u){u=String(u||'');return (/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/\S+$/i.test(u))?u:'';}
+function imgHtml(c){var u=safeImg(c.image);return u?'<img class="cimg" alt="" src="'+esc(u)+'">':'';}
+function storageMB(){try{return JSON.stringify(S).length/1048576;}catch(e){return 0;}}
+var edImg='';
+function hasAdv(v){return !!(v.task||v.acs||v.source||v.page||v.volatile||v.verify||v.checked||(v.followups&&v.followups.length)||(v.links&&v.links.length));}
+function openEditor(key){
+  var c=key?getCard(key):null,isNew=!c;
+  var topics={};allCards().forEach(function(x){topics[areaOf(x)]=1;});
+  var v=c||{area:lib.topic||'',task:'',front:'',back:'',followups:[],source:'',verify:false,type:'',page:'',links:[],volatile:false,checked:'',image:''};
+  edImg=safeImg(v.image);
+  var adv=!!S.settings.adv||hasAdv(v);
+  var h='<div class="box"><h2>'+(isNew?'Write a card':'Edit card')+'</h2><p class="sub" style="margin-bottom:0">'+(isNew?'Saved in "My cards" for '+esc(subj().name)+'.':(S.decks[c.deckId]&&S.decks[c.deckId].custom?'This is one of your own cards.':'Edits are kept on top of the imported deck, so re-importing will not overwrite them. You can revert at any time.'))+'</p>'+
+    '<label class="label">Topic</label><input type="text" id="e_area" list="topiclist" value="'+esc(v.area)+'" placeholder="e.g. Airspace, Chapter 4, Depreciation"><datalist id="topiclist">'+Object.keys(topics).sort().map(function(t){return '<option value="'+esc(t)+'">';}).join('')+'</datalist>'+
+    '<label class="label">Question <button class="btn ghost small" type="button" data-act="bold" data-t="e_front">Bold</button></label><textarea id="e_front">'+esc(v.front)+'</textarea>'+
+    '<label class="label">Answer <button class="btn ghost small" type="button" data-act="bold" data-t="e_back">Bold</button></label><textarea id="e_back" style="min-height:110px">'+esc(v.back)+'</textarea>'+
+    '<label class="label">Picture <small>(optional)</small></label><div class="row"><input type="file" id="e_imgf" accept="image/*"><button class="btn ghost small" type="button" data-act="rmimg">Remove picture</button></div><img id="e_imgp" class="cimg" alt="" '+(edImg?'src="'+esc(edImg)+'"':'hidden')+'>'+
+    '<div class="row" style="margin-top:14px"><button class="btn ghost small" type="button" data-act="adv" id="e_advbtn">'+(adv?'Hide advanced options':'Advanced options')+'</button></div>'+
+    '<div id="e_adv"'+(adv?'':' hidden')+'>'+
+    '<div class="two"><div><label class="label">Sub-topic</label><input type="text" id="e_task" value="'+esc(v.task||'')+'"></div><div><label class="label">Reference <small>(e.g. ACS code)</small></label><input type="text" id="e_acs" value="'+esc(v.acs||'')+'"></div></div>'+
+    '<label class="label">Likely follow-ups <small>(one per line)</small></label><textarea id="e_fu">'+esc((v.followups||[]).join('\n'))+'</textarea>'+
+    '<div class="two"><div><label class="label">Source</label><input type="text" id="e_src" value="'+esc(v.source||'')+'"></div><div><label class="label">Page / section</label><input type="text" id="e_page" value="'+esc(v.page||'')+'"></div></div>'+
+    '<label class="label">Resources <small>(one per line: <i>label | https://link</i>, or <i>search: topic</i> for a YouTube search)</small></label><textarea id="e_links" placeholder="Weather minimums explained | https://...">'+esc(fmtLinks(v.links))+'</textarea>'+
+    '<label class="check"><input type="checkbox" id="e_vol"'+(v.volatile?' checked':'')+'> Depends on rules that change. Remind me to re-check it.</label>'+
+    '<label class="label">Last checked against the source</label><input type="date" id="e_chk" value="'+esc(v.checked||'')+'" style="max-width:200px">'+
+    '<label class="check"><input type="checkbox" id="e_ver"'+(v.verify?' checked':'')+'> Needs verification against the source</label></div>'+
+    '<div class="row" style="margin-top:20px"><button class="btn" data-act="savecard" data-k="'+esc(key||'')+'">Save</button><button class="btn ghost" data-act="closemodal">Cancel</button><span class="sp"></span>';
+  if(c&&c.hasOv)h+='<button class="btn ghost small" data-act="revertcard" data-k="'+esc(key)+'">Revert to original</button>';
+  if(c&&S.decks[c.deckId]&&S.decks[c.deckId].custom)h+='<button class="btn danger small" data-act="delcard" data-k="'+esc(key)+'">Delete</button>';
+  h+='</div></div>';
+  $('modal').innerHTML=h;$('modal').classList.add('on');
+  setTimeout(function(){var f=$(isNew?'e_area':'e_front');if(f)f.focus();},30);
+}
+function closeModal(){$('modal').classList.remove('on');$('modal').innerHTML='';}
+function saveEditor(key){
+  var front=$('e_front').value.trim(),back=$('e_back').value.trim();
+  if(!front||!back){toast('A card needs a question and an answer.');return;}
+  var pl=parseLinks($('e_links').value);
+  if(pl.bad){$('e_adv').hidden=false;toast(pl.bad+' resource line'+(pl.bad===1?'':'s')+' not saved: links must start with http:// or https://');return;}
+  var patch={page:$('e_page').value.trim(),links:pl.links,volatile:$('e_vol').checked,checked:$('e_chk').value,area:$('e_area').value.trim(),task:$('e_task').value.trim(),acs:$('e_acs').value.trim(),front:front,back:back,
+    followups:$('e_fu').value.split('\n').map(function(x){return x.trim();}).filter(Boolean),source:$('e_src').value.trim(),verify:$('e_ver').checked,image:edImg};
+  if(!key){
+    var d=myDeck(S.currentSubject);patch.id=uid();patch.type='';d.cards.push(patch);save();
+    toast('Card added');
+  }else{updateCard(key,patch);toast('Saved');}
+  closeModal();render();
+}
+function shrinkImage(file,done){
+  var r=new FileReader();
+  r.onload=function(){
+    var im=new Image();
+    im.onload=function(){
+      var m=900,w=im.width,h=im.height,k=Math.min(1,m/Math.max(w,h));
+      var cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));
+      var cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cv.width,cv.height);cx.drawImage(im,0,0,cv.width,cv.height);
+      done(cv.toDataURL('image/jpeg',0.7));
+    };
+    im.onerror=function(){done('');};
+    im.src=r.result;
+  };
+  r.onerror=function(){done('');};
+  r.readAsDataURL(file);
+}
+/* ---- CSV / Quizlet ---- */
+function parseCsv(t){
+  t=String(t).replace(/^﻿/,'').replace(/\r\n?/g,'\n');
+  var first=t.split('\n')[0]||'',tabs=(first.match(/\t/g)||[]).length,com=(first.match(/,/g)||[]).length,sem=(first.match(/;/g)||[]).length;
+  var d=tabs>0&&tabs>=com?'\t':(sem>com?';':',');
+  var rows=[],row=[],cur='',q=false,i=0;
+  for(;i<t.length;i++){
+    var ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else if(ch==='"'&&cur==='')q=true;
+    else if(ch===d){row.push(cur);cur='';}
+    else if(ch==='\n'){row.push(cur);rows.push(row);row=[];cur='';}
+    else cur+=ch;
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(function(r){return r.some(function(x){return x.trim();});});
+}
+function hash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36);}
+function importCsv(text,fname){
+  var rows=parseCsv(text);if(!rows.length)throw new Error(fname+': no rows found.');
+  var hd=rows[0].map(function(x){return x.trim().toLowerCase();});
+  var names={front:['front','question','term','q'],back:['back','answer','definition','a'],area:['topic','area','category','chapter'],source:['source'],page:['page'],image:['image']};
+  var col={},isHead=false;
+  Object.keys(names).forEach(function(k){hd.forEach(function(x,i){if(names[k].indexOf(x)>-1&&col[k]===undefined){col[k]=i;isHead=true;}});});
+  var start=0;
+  if(isHead&&col.front!==undefined&&col.back!==undefined)start=1;
+  else{col={front:0,back:1,area:rows[0].length>2?2:undefined};}
+  var base=fname.replace(/\.[^.]+$/,'');
+  var title=prompt('Name this deck:',base);if(title===null)return null;title=title.trim()||base;
+  var seen={},cards=[],skipped=0;
+  for(var r=start;r<rows.length;r++){
+    var x=rows[r],f=(x[col.front]||'').trim(),b=(x[col.back]||'').trim();
+    if(!f||!b){skipped++;continue;}
+    var id='r'+hash(f),n=1;while(seen[id]){id='r'+hash(f)+'-'+(++n);}seen[id]=1;
+    var card={id:id,front:f,back:b,area:col.area!==undefined?(x[col.area]||'').trim():''};
+    if(col.source!==undefined)card.source=(x[col.source]||'').trim();
+    if(col.page!==undefined)card.page=(x[col.page]||'').trim();
+    if(col.image!==undefined)card.image=safeImg((x[col.image]||'').trim());
+    cards.push(card);
+  }
+  if(!cards.length)throw new Error(fname+': no usable rows (each needs a term and a definition).');
+  var res=importDeck({deck:{id:'csv-'+slug(title),title:title,standard:'Imported from '+fname,subject:subj()?subj().name:''},cards:cards},fname);
+  res.skipped=skipped;return res;
+}
+/* ---- merge progress from another device ---- */
+var mergeMode=false;
+function mergeBackup(obj){
+  if(!obj||obj.format!=='checkride-backup'||!obj.data)throw new Error('Not a backup file.');
+  if((obj.version||1)>VER)throw new Error('This backup was made by a newer version of the app. Update the app first.');
+  var b=migrate(obj.data),st={prog:0,notes:0,cards:0,decks:0};
+  try{localStorage.setItem(UNDOKEY,JSON.stringify(S));}catch(e){}
+  Object.keys(b.subjects).forEach(function(k){if(!S.subjects[k])S.subjects[k]=b.subjects[k];});
+  Object.keys(b.decks).forEach(function(id){
+    var bd=b.decks[id],ld=S.decks[id];
+    if(!ld){S.decks[id]=bd;st.decks++;}
+    else if(bd.custom&&ld.custom){var have={};ld.cards.forEach(function(c){have[c.id]=1;});bd.cards.forEach(function(c){if(!have[c.id]){ld.cards.push(c);st.cards++;}});}
+  });
+  Object.keys(b.progress).forEach(function(k){
+    var a=S.progress[k],c=b.progress[k];
+    if(!a||(c.last||0)>(a.last||0)||(!a.last&&!c.last&&(c.reps||0)>(a.reps||0))){S.progress[k]=c;st.prog++;}
+  });
+  Object.keys(b.notes).forEach(function(k){
+    var a=S.notes[k],c=b.notes[k];
+    if(!a){S.notes[k]=c;st.notes++;}
+    else if(c&&a.indexOf(c)<0&&c.indexOf(a)<0){S.notes[k]=a+'\n---\n'+c;st.notes++;}
+    else if(c&&c.indexOf(a)>-1&&c.length>a.length){S.notes[k]=c;}
+  });
+  Object.keys(b.flags||{}).forEach(function(k){S.flags[k]=1;});
+  Object.keys(b.overrides||{}).forEach(function(k){if(!S.overrides[k])S.overrides[k]=b.overrides[k];});
+  Object.keys(b.history||{}).forEach(function(k){S.history[k]=Math.max(S.history[k]||0,b.history[k]||0);});
+  Object.keys(b.sets||{}).forEach(function(k){if(!S.sets[k])S.sets[k]=b.sets[k];});
+  Object.keys(b.cheat||{}).forEach(function(k){S.cheat[k]=1;});
+  (b.mocks||[]).forEach(function(m){if(!S.mocks.some(function(x){return x.t===m.t;}))S.mocks.push(m);});
+  S.mocks.sort(function(a,b2){return a.t-b2.t;});S.mocks=S.mocks.slice(-20);
+  save();
+  return 'Combined: '+st.prog+' card'+(st.prog===1?'':'s')+' updated from the other device, '+st.notes+' note'+(st.notes===1?'':'s')+', '+st.decks+' new deck'+(st.decks===1?'':'s')+(st.cards?', '+st.cards+' of your cards':'')+'. Undo is in Settings.';
+}
+/* ---- Checkride tab ---- */
+var ck={tab:'oral'},mo=null,moOpt={n:10,focus:true,areas:null},xc=null,rdGroups=[];
+function ckTabs(){
+  var h='<div class="seg noprint">';
+  [['oral','Mock oral'],['ready','Readiness'],['xc','Cross-country'],['cheat','Cheat sheet']].forEach(function(t){h+='<button class="btn small'+(ck.tab===t[0]?'':' ghost')+'" data-act="cktab" data-t="'+t[0]+'">'+t[1]+'</button>';});
+  return h+'</div>';
+}
+function renderCheckride(){
+  var h='<h1>Checkride prep</h1><p class="sub noprint">Tools for the oral and the cross-country planning questions. They use the cards in "'+esc(subj().name)+'".</p>'+ckTabs();
+  mainEl.innerHTML=h+'<div id="ckbody"></div>';
+  var b=$('ckbody');
+  if(ck.tab==='oral')b.innerHTML=moHtml();else if(ck.tab==='ready')b.innerHTML=readyHtml();else if(ck.tab==='xc')b.innerHTML=xcHtml();else b.innerHTML=cheatHtml();
+  var xi=$('xc_in');if(xi)xi.focus();
+}
+/* mock oral */
+function moHtml(){
+  var cards=allCards();
+  if(!cards.length)return '<div class="card empty"><p>No cards in this subject yet.</p></div>';
+  if(!mo){
+    var areas={};cards.forEach(function(c){areas[areaOf(c)]=(areas[areaOf(c)]||0)+1;});
+    var sel=moOpt.areas||Object.keys(areas);
+    var h='<div class="card" style="padding:18px"><p class="sub" style="margin-top:0">An examiner-style run: you get a question, say your answer out loud first, then reveal it and rate yourself honestly. The follow-ups show what an examiner may ask next.</p>'+
+      '<label class="label" style="margin-top:0">Number of questions</label><select id="mo_n">'+[5,10,20,30].map(function(n){return '<option'+(moOpt.n===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>'+
+      '<label class="check"><input type="checkbox" id="mo_focus"'+(moOpt.focus?' checked':'')+'> Lean toward weak, due and unseen cards</label>'+
+      '<label class="label">Areas</label><div class="mo-areas">';
+    Object.keys(areas).sort().forEach(function(a){h+='<label class="check"><input type="checkbox" class="mo_area" value="'+esc(a)+'"'+(sel.indexOf(a)>-1?' checked':'')+'> '+esc(a)+' <small>('+areas[a]+')</small></label>';});
+    h+='</div><div class="row" style="margin-top:14px"><button class="btn" data-act="mostart">Start mock oral</button></div></div>';
+    if(S.mocks.length){
+      h+='<h2>Past mock orals</h2><div class="card list">';
+      S.mocks.slice().reverse().slice(0,6).forEach(function(m){h+='<div class="item"><div class="main"><div class="t">'+esc(new Date(m.t).toLocaleDateString())+'</div><div class="m">'+m.solid+' solid, '+m.shaky+' shaky, '+m.missed+' missed of '+m.n+'</div></div><span class="chip'+(m.solid/m.n>=0.8?' ok':'')+'">'+Math.round(100*m.solid/m.n)+'%</span></div>';});
+      h+='</div>';
+    }
+    return h;
+  }
+  if(mo.idx>=mo.queue.length){
+    var by={},solid=0,shaky=0,missed=0;
+    mo.queue.forEach(function(k){var c=getCard(k),a=c?areaOf(c):'?',r=mo.rate[k];by[a]=by[a]||{n:0,s:0,m:0};by[a].n++;if(r===3){solid++;by[a].s++;}else if(r===2)shaky++;else{missed++;by[a].m++;}});
+    var h2='<div class="card" style="padding:18px"><h2 style="margin-top:0">Result: '+solid+' of '+mo.queue.length+' solid</h2><p class="sub">'+shaky+' shaky, '+missed+' missed. This is your own rating, not an assessment.</p>';
+    h2+='<div class="list card">';
+    Object.keys(by).sort().forEach(function(a){var x=by[a];h2+='<div class="item"><div class="main"><div class="t">'+esc(a)+'</div></div><span class="chip'+(x.s===x.n?' ok':'')+'">'+x.s+' / '+x.n+' solid</span></div>';});
+    h2+='</div>';
+    var wk=mo.queue.filter(function(k){return mo.rate[k]<3;});
+    if(wk.length){
+      h2+='<h2>Review these</h2><div class="card list">';
+      wk.forEach(function(k){var c=getCard(k);if(c)h2+='<div class="item"><div class="main"><div class="t">'+fmt(c.front)+'</div><div class="m">'+(mo.rate[k]===1?'Missed':'Shaky')+' &middot; '+esc(areaOf(c))+'</div></div></div>';});
+      h2+='</div>';
+    }
+    h2+='<div class="row" style="margin-top:14px">'+(wk.length&&!mo.sent?'<button class="btn" data-act="mosend">Add missed and shaky to my reviews</button>':'')+(wk.length?'<button class="btn ghost" data-act="mostudy">Study them now</button>':'')+'<button class="btn ghost" data-act="moagain">New mock oral</button></div></div>';
+    return h2;
+  }
+  var k=mo.queue[mo.idx],c=getCard(k);
+  var h3='<div class="card" style="padding:20px"><div class="meta"><span>'+esc(areaOf(c))+'</span><span>Question '+(mo.idx+1)+' of '+mo.queue.length+'</span></div>'+
+    '<div class="front" style="font-size:1.25em;margin:14px 0">'+fmt(c.front)+'</div>'+imgHtml(c);
+  if(!mo.revealed)h3+='<p class="sub">Say your answer out loud, then reveal it.</p><div class="row"><button class="btn" data-act="morev">Reveal answer</button><button class="btn ghost" data-act="moend">End</button></div>';
+  else{
+    h3+='<div class="ans" style="padding:12px 14px;background:var(--accent-soft);border-radius:12px">'+fmt(c.back)+'</div>';
+    if(c.followups&&c.followups.length)h3+='<div class="hd" style="margin-top:14px">An examiner may ask next</div><ul>'+c.followups.map(function(f){return '<li>'+fmt(f)+'</li>';}).join('')+'</ul>';
+    if(c.source||c.page)h3+='<div class="src" style="margin-top:8px">'+esc(c.source||'')+(c.source&&c.page?' &middot; ':'')+esc(c.page||'')+'</div>';
+    h3+='<div class="rates" style="margin-top:16px"><button class="rate r1" data-act="morate" data-r="1">Missed it</button><button class="rate r2" data-act="morate" data-r="2">Shaky</button><button class="rate r3" data-act="morate" data-r="3">Solid</button></div>';
+  }
+  return h3+'</div>';
+}
+function moStart(){
+  var pool=allCards();
+  var ar=Array.prototype.slice.call(document.querySelectorAll('.mo_area')).filter(function(x){return x.checked;}).map(function(x){return x.value;});
+  moOpt.n=parseInt($('mo_n').value,10)||10;moOpt.focus=$('mo_focus').checked;moOpt.areas=ar;
+  pool=pool.filter(function(c){return ar.indexOf(areaOf(c))>-1;});
+  if(!pool.length){toast('Pick at least one area with cards.');return;}
+  var now=Date.now();
+  pool=pool.map(function(c){var p=S.progress[c.key],s=Math.random()*2;if(moOpt.focus){if(isWeak(c))s+=3;if(!p)s+=2;else if(p.due<=now)s+=1;}else s=Math.random();return{k:c.key,s:s};}).sort(function(a,b){return b.s-a.s;});
+  mo={queue:pool.slice(0,moOpt.n).map(function(x){return x.k;}),idx:0,revealed:false,rate:{},sent:false};
+}
+function moFinish(){
+  var s=0,sh=0,m=0;mo.queue.forEach(function(k){var r=mo.rate[k]||1;if(r===3)s++;else if(r===2)sh++;else m++;});
+  S.mocks.push({t:Date.now(),n:mo.queue.length,solid:s,shaky:sh,missed:m});S.mocks=S.mocks.slice(-20);save();
+}
+/* readiness */
+function readyHtml(){
+  var cards=allCards();if(!cards.length)return '<div class="card empty"><p>No cards in this subject yet.</p></div>';
+  var g={};
+  cards.forEach(function(c){
+    var lab=c.acs?(c.acs+(c.task?' '+c.task:'')):(c.task||areaOf(c)),key=areaOf(c)+'||'+lab;
+    var x=g[key]||(g[key]={area:areaOf(c),label:lab,keys:[],n:0,seen:0,solid:0,weak:0,due:0});
+    var p=S.progress[c.key];x.keys.push(c.key);x.n++;
+    if(p){x.seen++;if(p.interval>=3)x.solid++;if(p.due<=Date.now())x.due++;}
+    if(isWeak(c))x.weak++;
+  });
+  rdGroups=Object.keys(g).map(function(k){var x=g[k];x.state=x.seen===0?0:(x.solid/x.n>=0.8&&!x.weak?3:(x.solid/x.n>=0.4?2:1));return x;});
+  rdGroups.sort(function(a,b){return a.area<b.area?-1:a.area>b.area?1:(a.label<b.label?-1:1);});
+  var tot=cards.length,solid=0,ready=0;rdGroups.forEach(function(x){solid+=x.solid;if(x.state===3)ready++;});
+  var names=['Not started','Needs work','Building','Ready'];
+  var h='<div class="card hero"><div><div class="big">'+Math.round(100*solid/tot)+'%</div><div class="cap">of cards solid &middot; '+ready+' of '+rdGroups.length+' groups ready</div></div><button class="btn" data-act="rdweak">Study the weakest</button></div>'+
+    '<p class="legend">Groups follow the ACS code or sub-topic on each card (or the topic if there is none). "Ready" means at least 80% of the cards are solid and none are weak. This reflects your own review history only.</p>';
+  var cur='';
+  rdGroups.forEach(function(x,i){
+    if(x.area!==cur){if(cur)h+='</div>';cur=x.area;h+='<h2>'+esc(cur)+'</h2><div class="card covcard">';}
+    h+='<div class="covrow" data-act="rdstudy" data-i="'+i+'"><div class="top"><b>'+esc(x.label)+'</b><span><span class="chip'+(x.state===3?' ok':(x.state===1?' verify':''))+'">'+names[x.state]+'</span> '+x.solid+' / '+x.n+'</span></div><div class="bar"><i class="seen" style="width:'+(100*x.seen/x.n)+'%"></i><i class="solid" style="width:'+(100*x.solid/x.n)+'%"></i></div></div>';
+  });
+  return h+'</div>';
+}
+/* cross-country drills */
+function rnd(a,b,s){s=s||1;return a+s*Math.floor(Math.random()*((b-a)/s+1));}
+function nm(x,d){var p=Math.pow(10,d||0);return Math.round(x*p)/p;}
+var XK=[['mix','Mixed'],['gs','Time and speed'],['fuel','Fuel'],['wind','Wind correction'],['da','Density altitude'],['xw','Crosswind'],['dsc','Descent']];
+function xcMake(kind){
+  if(kind==='mix'){var ks=['gs','fuel','wind','da','xw','dsc'];kind=ks[rnd(0,5)];}
+  var q;
+  if(kind==='gs'){
+    if(Math.random()<0.5){var d=rnd(40,180,5),t=rnd(25,95);q={t:'You fly '+d+' NM in '+t+' minutes. What is your groundspeed (knots)?',a:d/(t/60),tol:3,u:'kt',w:'Groundspeed = distance / time. '+d+' / ('+t+'/60) = '+nm(d/(t/60),1)+' kt.'};}
+    else{var g=rnd(85,125,5),d2=rnd(40,200,5);q={t:'Groundspeed is '+g+' kt and the leg is '+d2+' NM. What is the time en route (minutes)?',a:d2/g*60,tol:1.5,u:'min',w:'Time = distance / groundspeed x 60. '+d2+' / '+g+' x 60 = '+nm(d2/g*60,1)+' min.'};}
+  }else if(kind==='fuel'){
+    if(Math.random()<0.6){var b=rnd(8,10,0.5),tm=rnd(60,200,5);q={t:'Time en route is '+tm+' minutes at '+b+' gal/hr. How many gallons are needed for the flight plus a 30-minute day VFR reserve?',a:b*(tm+30)/60,tol:0.4,u:'gal',w:'Total time '+(tm+30)+' min. '+b+' gal/hr x '+(tm+30)+'/60 = '+nm(b*(tm+30)/60,1)+' gal. (The 30-minute day reserve is 14 CFR 91.151; it is 45 minutes at night.)'};}
+    else{var f=rnd(30,53),b2=rnd(8,10,0.5);q={t:f+' gallons usable at '+b2+' gal/hr. What is the endurance in hours (decimal)?',a:f/b2,tol:0.1,u:'hr',w:'Endurance = fuel / burn rate. '+f+' / '+b2+' = '+nm(f/b2,2)+' hr, before any reserve.'};}
+  }else if(kind==='wind'){
+    var tas=rnd(90,125,5),crs=rnd(10,360,10),wd=rnd(10,360,10),ws=rnd(8,25),rel=(wd-crs)*Math.PI/180;
+    var wca=Math.asin(ws*Math.sin(rel)/tas),gs=tas*Math.cos(wca)-ws*Math.cos(rel),hdg=(crs+wca*180/Math.PI+720)%360;
+    var desc='True course '+crs+', TAS '+tas+' kt, wind from '+wd+' at '+ws+' kt. ';
+    if(Math.random()<0.5)q={t:desc+'What true heading do you fly (degrees)?',a:hdg,tol:3,u:'deg',circ:1,w:'Wind correction angle = asin(wind x sin(wind angle) / TAS) = '+nm(wca*180/Math.PI,1)+' deg. Heading = course + WCA = '+nm(hdg,0)+'. Ground speed comes out near '+nm(gs,0)+' kt.'};
+    else q={t:desc+'What is your groundspeed (knots)?',a:gs,tol:3,u:'kt',w:'Groundspeed = TAS x cos(WCA) - wind x cos(wind angle) = '+nm(gs,1)+' kt. Heading would be about '+nm(hdg,0)+'.'};
+  }else if(kind==='da'){
+    var el=rnd(0,6000,50),alt=rnd(2960,3030)/100,oat=rnd(-5,38),pa=el+(29.92-alt)*1000,isa=15-2*pa/1000,da=pa+120*(oat-isa);
+    q={t:'Field elevation '+el+' ft, altimeter '+alt.toFixed(2)+' inHg, OAT '+oat+' C. What is the density altitude (feet)?',a:da,tol:150,u:'ft',w:'Pressure altitude = '+el+' + (29.92 - '+alt.toFixed(2)+') x 1000 = '+nm(pa,0)+' ft. ISA at that altitude = '+nm(isa,1)+' C. DA = PA + 120 x (OAT - ISA) = '+nm(da,0)+' ft.'};
+  }else if(kind==='xw'){
+    var rw=rnd(1,36),wd2=rnd(10,360,10),ws2=rnd(8,30),ang=(wd2-rw*10)*Math.PI/180,xw=Math.abs(ws2*Math.sin(ang)),hw=ws2*Math.cos(ang);
+    q={t:'Runway '+rw+', wind from '+wd2+' at '+ws2+' kt. What is the crosswind component (knots)?',a:xw,tol:1.5,u:'kt',w:'Crosswind = wind x sin(angle). Angle = '+Math.abs(Math.round(((wd2-rw*10+540)%360)-180))+' deg, so '+nm(xw,1)+' kt crosswind and '+nm(hw,1)+' kt '+(hw>=0?'headwind':'tailwind')+'.'};
+  }else{
+    if(Math.random()<0.6){var ca=rnd(4500,9500,500),fe=rnd(0,2000,250);q={t:'Cruising at '+ca+' ft MSL toward a field at '+fe+' ft MSL. Using the rule of thumb of 3 NM per 1,000 ft, how many NM out should you start a descent to field elevation?',a:(ca-fe)/1000*3,tol:1,u:'NM',w:'('+ca+' - '+fe+') / 1000 x 3 = '+nm((ca-fe)/1000*3,1)+' NM. It is a rule of thumb for a roughly 3 degree path.'};}
+    else{var g3=rnd(80,120,5);q={t:'Groundspeed is '+g3+' kt. About what descent rate (ft/min) holds a 3 degree path? (Rule of thumb)',a:g3*5,tol:30,u:'fpm',w:'Descent rate is roughly 5 x groundspeed for 3 degrees: '+g3+' x 5 = '+(g3*5)+' fpm.'};}
+  }
+  q.kind=kind;return q;
+}
+function xcHtml(){
+  if(!xc)xc={kind:'mix',q:null,n:0,right:0,res:null};
+  if(!xc.q)xc.q=xcMake(xc.kind);
+  var h='<div class="seg">';
+  XK.forEach(function(k){h+='<button class="btn small'+(xc.kind===k[0]?'':' ghost')+'" data-act="xckind" data-t="'+k[0]+'">'+k[1]+'</button>';});
+  h+='</div><div class="card" style="padding:20px"><div class="meta"><span>Planning drill</span><span>'+xc.right+' / '+xc.n+' correct</span></div><div class="front" style="font-size:1.15em;margin:14px 0">'+esc(xc.q.t)+'</div>';
+  if(!xc.res){
+    h+='<div class="row"><input type="number" step="any" inputmode="decimal" id="xc_in" placeholder="Answer ('+xc.q.u+')" style="max-width:200px"><button class="btn" data-act="xccheck">Check</button><button class="btn ghost" data-act="xcnext">Skip</button></div>';
+  }else{
+    h+='<div class="vbox" style="'+(xc.res.ok?'':'')+'"><span><b>'+(xc.res.ok?'Correct.':'Not quite.')+'</b> You said '+esc(xc.res.v)+'. The answer is about '+nm(xc.q.a,xc.q.a<20?2:0)+' '+xc.q.u+' (within '+xc.q.tol+' '+xc.q.u+' counts). '+esc(xc.q.w)+'</span></div><div class="row" style="margin-top:12px"><button class="btn" data-act="xcnext">Next problem</button></div>';
+  }
+  h+='</div><p class="legend">Practice for the arithmetic. Always use the aircraft performance data and charts in your POH for real flights; the density altitude formula here is the standard approximation.</p>';
+  return h;
+}
+function xcCheck(){
+  var i=$('xc_in');if(!i||i.value==='')return;
+  var v=parseFloat(i.value),a=xc.q.a,d=Math.abs(v-a);
+  if(xc.q.circ)d=Math.min(d,360-d);
+  var ok=d<=xc.q.tol;xc.n++;if(ok)xc.right++;xc.res={ok:ok,v:v};renderCheckride();
+}
+/* cheat sheet */
+function cheatHtml(){
+  var keys=Object.keys(S.cheat).filter(function(k){return getCard(k);});
+  var h='<div class="noprint"><p class="sub">Collect the cards you want on one printable page (V-speeds, memory items, limits). Add single cards with "Cheat sheet" while studying, or add whole decks here.</p><div class="card list">';
+  Object.keys(S.decks).filter(function(i){return S.decks[i].subject===S.currentSubject&&S.decks[i].cards.length;}).forEach(function(id){
+    var d=S.decks[id];h+='<div class="item"><div class="main"><div class="t">'+esc(d.title)+'</div><div class="m">'+d.cards.length+' cards</div></div><button class="btn ghost small" data-act="cheatdeck" data-d="'+esc(id)+'">Add all</button></div>';
+  });
+  h+='</div><div class="row" style="margin:12px 0"><button class="btn" data-act="cheatprint"'+(keys.length?'':' disabled')+'>Print or save as PDF</button><button class="btn ghost" data-act="cheatclear"'+(keys.length?'':' disabled')+'>Clear sheet</button></div></div>';
+  if(!keys.length)return h+'<div class="card empty noprint"><p>The sheet is empty.</p></div>';
+  var by={};keys.forEach(function(k){var c=getCard(k),a=areaOf(c);(by[a]=by[a]||[]).push(c);});
+  h+='<div class="cheat"><h2 class="printonly">'+esc(subj().name)+': cheat sheet</h2>';
+  Object.keys(by).sort().forEach(function(a){
+    h+='<div class="cs-group"><h3>'+esc(a)+'</h3>';
+    by[a].forEach(function(c){h+='<div class="cs-item"><div class="cs-q">'+fmt(c.front)+'</div><div class="cs-a">'+fmt(c.back)+'</div><button class="link noprint" data-act="cheatrm" data-k="'+esc(c.key)+'">Remove</button></div>';});
+    h+='</div>';
+  });
+  return h+'<p class="legend">Study aid only. Confirm against the current POH, regulations and your instructor before relying on it.</p></div>';
+}
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='e_imgf'&&t.files&&t.files[0]){
+    shrinkImage(t.files[0],function(u){
+      if(!u){toast('Could not read that picture.');return;}
+      edImg=u;var p=$('e_imgp');if(p){p.src=u;p.hidden=false;}
+      var mb=storageMB()+u.length/1048576;
+      toast(mb>3.5?'Picture added. Storage is getting full (about '+nm(mb,1)+' MB of roughly 5 MB). Export a backup.':'Picture added ('+Math.round(u.length/1024)+' KB)');
+    });
+  }else if(t.id==='sflight'){var sb=subj();if(sb){sb.flight=t.checked;save();if(!t.checked&&view==='checkride')view='home';render();}}
+});
+document.addEventListener('keydown',function(e){if(e.target&&e.target.id==='xc_in'&&e.key==='Enter'){e.preventDefault();xcCheck();}});
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');if(!el)return;
+  var a=el.getAttribute('data-act'),k=el.getAttribute('data-k');
+  switch(a){
+    case 'adv':{var ad=$('e_adv');if(ad){ad.hidden=!ad.hidden;S.settings.adv=!ad.hidden;save();$('e_advbtn').textContent=ad.hidden?'Advanced options':'Hide advanced options';}break;}
+    case 'rmimg':{edImg='';var p=$('e_imgp');if(p){p.removeAttribute('src');p.hidden=true;}var f=$('e_imgf');if(f)f.value='';break;}
+    case 'mergeimport':mergeMode=true;fileIn.click();break;
+    case 'import':mergeMode=false;break;
+    case 'cktab':ck.tab=el.getAttribute('data-t');renderCheckride();break;
+    case 'mostart':moStart();renderCheckride();break;
+    case 'morev':mo.revealed=true;renderCheckride();break;
+    case 'morate':{var kk=mo.queue[mo.idx];mo.rate[kk]=parseInt(el.getAttribute('data-r'),10);mo.idx++;mo.revealed=false;if(mo.idx>=mo.queue.length)moFinish();renderCheckride();break;}
+    case 'moend':mo=null;renderCheckride();break;
+    case 'moagain':mo=null;renderCheckride();break;
+    case 'mosend':{mo.queue.forEach(function(q){var r=mo.rate[q];if(r<3)S.progress[q]=schedule(S.progress[q],r===1?1:2);});mo.sent=true;save();toast('Added to your review schedule');renderCheckride();break;}
+    case 'mostudy':{var wk=mo.queue.filter(function(q){return mo.rate[q]<3;});mo=null;startSession(wk,{title:'Mock oral review',cram:true});break;}
+    case 'rdstudy':{var g=rdGroups[parseInt(el.getAttribute('data-i'),10)];if(g)startSession(g.keys,{title:g.label,cram:true});break;}
+    case 'rdweak':{var cand=rdGroups.filter(function(x){return x.state<3;}).sort(function(x,y){return (x.state-y.state)||(y.n-x.n);});if(!cand.length){toast('Every group is ready');break;}var wg=cand.filter(function(x){return x.state>0;})[0]||cand[0];startSession(wg.keys,{title:wg.label,cram:true});break;}
+    case 'xckind':xc={kind:el.getAttribute('data-t'),q:null,n:xc?xc.n:0,right:xc?xc.right:0,res:null};renderCheckride();break;
+    case 'xccheck':xcCheck();break;
+    case 'xcnext':xc.q=null;xc.res=null;renderCheckride();break;
+    case 'cheattog':{if(S.cheat[k]){delete S.cheat[k];toast('Removed from cheat sheet');}else{S.cheat[k]=1;toast('Added to cheat sheet');}save();render();break;}
+    case 'cheatdeck':{var dk=S.decks[el.getAttribute('data-d')];if(dk){dk.cards.forEach(function(c){S.cheat[dk.id+':'+c.id]=1;});save();renderCheckride();toast('Added');}break;}
+    case 'cheatrm':delete S.cheat[k];save();renderCheckride();break;
+    case 'cheatclear':if(confirm('Remove every card from the cheat sheet?')){S.cheat={};save();renderCheckride();}break;
+    case 'cheatprint':window.print();break;
+  }
+});
 
 /* ---------- settings ---------- */
 function persistLabel(){
@@ -885,10 +1237,13 @@ function renderSettings(){
   if(sb){
     h+='<label class="label">Subject: name</label><input type="text" id="sname" value="'+esc(sb.name)+'" style="max-width:340px">'+
        '<label class="label">Exam date <small>(optional, shows a countdown and a pace on Home)</small></label><input type="date" id="sdate" value="'+esc(sb.examDate||'')+'" style="max-width:200px">'+
+       '<label class="check"><input type="checkbox" id="sflight"'+(sb.flight?' checked':'')+'> This is a flight subject (shows the Checkride tab)</label>'+
        '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-act="newsubj">New subject</button><button class="btn ghost small" data-act="delsubj">Delete this subject</button></div>';
   }else h+='<div class="row" style="margin-top:14px"><button class="btn ghost small" data-act="newsubj">New subject</button></div>';
   h+='<label class="label">Backup</label><p class="sub" style="margin:0 0 10px">Includes subjects, decks, your own cards, edits, progress and notes. '+(S.lastBackup?'Last backup: '+new Date(S.lastBackup).toLocaleString()+'.':'No backup yet.')+'</p>'+
      '<div class="row"><button class="btn" data-act="backup">Export backup</button><button class="btn ghost" data-act="import">Restore from backup</button></div>'+
+     '<label class="label">Use on more than one device</label><p class="sub" style="margin:0 0 10px">Progress lives in each browser. To combine devices: export a backup on one, then choose Combine here on the other. The newest review of each card wins, notes are merged, and nothing is deleted. Do this in both directions to bring them level.</p><div class="row"><button class="btn ghost" data-act="mergeimport">Combine progress from a backup</button></div>'+
+     '<label class="label">Import cards</label><p class="sub" style="margin:0 0 10px">Choose a deck file (.json) or a spreadsheet/Quizlet export (.csv, .tsv or .txt) with a term and definition per line. An optional topic column is used if present.</p><div class="row"><button class="btn ghost" data-act="import">Import cards or deck</button></div>'+
      protectHtml()+'<label class="label">Reset</label><button class="btn danger small" data-act="reset">Erase everything</button></div>';
   mainEl.innerHTML=h;
   $('npd').addEventListener('change',function(){S.settings.newPerDay=Math.max(0,parseInt($('npd').value,10)||0);save();toast('Saved');renderNav();});
@@ -1356,7 +1711,7 @@ document.addEventListener('click',function(e){
     case 'deldeck':{var id=el.getAttribute('data-d');if(confirm('Remove this deck? Progress, notes and edits for its cards are kept in case you re-import it.')){delete S.decks[id];save();render();}break;}
     case 'exportdeck':{
       var dk=S.decks[el.getAttribute('data-d')];
-      var cs=dk.cards.map(function(c){var m=applyOv(c,dk.id+':'+c.id);return{id:m.id,area:m.area,task:m.task,acs:m.acs,type:m.type,front:m.front,back:m.back,followups:m.followups,source:m.source,page:m.page||'',verify:!!m.verify,volatile:!!m.volatile,checked:m.checked||'',links:m.links||[]};});
+      var cs=dk.cards.map(function(c){var m=applyOv(c,dk.id+':'+c.id);return{id:m.id,area:m.area,task:m.task,acs:m.acs,type:m.type,front:m.front,back:m.back,followups:m.followups,source:m.source,page:m.page||'',verify:!!m.verify,volatile:!!m.volatile,checked:m.checked||'',links:m.links||[],image:m.image||''};});
       download(slug(dk.title)+'.deck.json',{format:'checkride-deck',version:1,deck:{id:dk.id,title:dk.title,standard:dk.standard,subject:(S.subjects[dk.subject]||{}).name||''},cards:cs,scenarios:dk.scenarios||[]});break;}
     case 'backup':doBackup(false);toast('Backup exported. Move it to a safe folder such as iCloud Drive.');renderSettings();break;
     case 'reset':if(confirm('Erase all subjects, decks, progress, and notes from this browser? This cannot be undone.')&&confirm('Really erase everything?')){S=migrate(defaults());save();session=null;view='home';render();}break;
