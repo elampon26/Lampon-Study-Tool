@@ -284,6 +284,32 @@ pre.metar{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:v
 }
 @media (max-width:340px){nav button.nv{font-size:9px}nav{padding-left:8px;padding-right:8px}}
 
+
+/* drive mode */
+.drv{max-width:640px;margin:0 auto}
+.drvtop{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-bottom:6px}
+.drvphase{font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:13px;color:var(--accent);margin-bottom:8px}
+.drvcard{padding:22px 20px;min-height:140px}
+.drvq,.drva{white-space:pre-wrap}
+.drvq{font-size:22px;line-height:1.35;font-weight:600;overflow-wrap:anywhere}
+.drva{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:18px;line-height:1.4;overflow-wrap:anywhere}
+.drvmic{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px;margin:12px 2px;min-height:22px}
+.micdot{width:10px;height:10px;border-radius:50%;background:var(--line);flex:none}
+.micdot.on{background:var(--good,#1a9d5b);box-shadow:0 0 0 4px rgba(26,157,91,.2)}
+.drvrate,.drvctl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.drvrate.one{grid-template-columns:1fr}
+.drvctl{grid-template-columns:repeat(4,1fr)}
+.drvctl.two{grid-template-columns:1fr 1fr}
+.drv button{all:unset;box-sizing:border-box;cursor:pointer;text-align:center;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:14px;padding:14px 6px;font-weight:600;font-size:15px}
+.drv button.drvbtn{padding:22px 8px;font-size:20px}
+.drv button.drvbtn.good{background:var(--good,#1a9d5b);color:#fff;border-color:transparent}
+.drv button.drvbtn.bad{background:var(--bad,#d1342f);color:#fff;border-color:transparent}
+.drv button.link{border:0;background:none;color:var(--accent);padding:8px 4px;font-size:14px}
+.drv button.btn{background:var(--accent);color:var(--accent-ink);border:0;padding:11px 20px;font-size:16px}
+.drv button.btn.ghost{background:none;color:var(--accent);border:1px solid var(--line)}
+.drv button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.drvlinks{display:flex;gap:18px;justify-content:center;margin-top:6px}
+@media (max-width:760px){body.driving nav,body.driving #topbar{display:none}body.driving main{padding-bottom:calc(24px + var(--sab));padding-top:calc(14px + var(--sat))}}
 </style>
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Study"><meta name="theme-color" content="#2f6bff"></head>
 <body>
@@ -525,9 +551,9 @@ var lib={topic:null,filter:'all',q:'',sel:{}};
 var navEl=$('nav'),mainEl=$('main');
 
 /* ---------- render ---------- */
-function render(){if(view!=='games')stopGame();if(view==='checkride'&&!isFlight())view='home';renderNav();
+function render(){if(view!=='drive'&&drive)driveAbort();if(view!=='games')stopGame();if(view==='checkride'&&!isFlight())view='home';renderNav();
   if(!Object.keys(S.subjects).length&&view!=='settings'){renderWelcome();return;}
-  if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else if(view==='checkride')renderCheckride();else renderSettings();
+  if(view==='home')renderHome();else if(view==='study')renderStudy();else if(view==='library')renderLibrary();else if(view==='verify')renderVerify();else if(view==='games')renderGames();else if(view==='checkride')renderCheckride();else if(view==='drive')renderDrive();else renderSettings();
 }
 var ICONS={theme:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',check:'<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',study:'<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v11"/>',games:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',library:'<path d="M4 4h5v16H4zM11 4h4v16h-4zM17.5 5.5l3.2.9-3.6 13.6-3.2-.9z"/>',more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',verify:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.4-1 .9-1 1.6M12 17h.01"/>'};
 function ic(n){if(n==='checkride')n='check';return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[n]+'</svg>';}
@@ -562,7 +588,7 @@ function openMore(){
   var vc=allCards().filter(attn).length;
   var h='<div class="box"><div class="card list">';
   [['verify','Verify queue'+(vc?' ('+vc+')':'')],['settings','Settings']].forEach(function(it){h+='<button class="item click mrow" data-act="nav" data-v="'+it[0]+'">'+ic(it[0])+'<span>'+it[1]+'</span></button>';});
-  h+='<button class="item click mrow" data-act="search">'+ic('search')+'<span>Search all cards</span></button><button class="item click mrow" data-act="help">'+ic('help')+'<span>Keyboard shortcuts</span></button><button class="item click mrow" data-act="theme">'+ic('theme')+'<span>Theme: '+themeLabel()+'</span></button></div></div>';
+  h+='<button class="item click mrow" data-act="drive">'+ic('games')+'<span>Drive mode (hands-free)</span></button><button class="item click mrow" data-act="search">'+ic('search')+'<span>Search all cards</span></button><button class="item click mrow" data-act="help">'+ic('help')+'<span>Keyboard shortcuts</span></button><button class="item click mrow" data-act="theme">'+ic('theme')+'<span>Theme: '+themeLabel()+'</span></button></div></div>';
   $('modal').innerHTML=h;$('modal').classList.add('on');
 }
 function backupBanner(){
@@ -614,7 +640,7 @@ function renderHome(){
      '<button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button></div>';
   h+='<div class="sublinks"><button class="link" data-act="cram">Practice all (shuffled)</button>'+
      '<button class="link" data-act="weak"'+(weak?'':' disabled')+'>Weak cards ('+weak+')</button>'+
-     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button><button class="link" data-act="g_daily">Daily challenge'+(S.dc.date===today()?' (done)':'')+'</button></div>';
+     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button><button class="link" data-act="g_daily">Daily challenge'+(S.dc.date===today()?' (done)':'')+'</button><button class="link" data-act="drive">Drive mode</button></div>';
   h+='<div class="mini"><div class="stat"><b>'+seen+'<small> / '+cards.length+'</small></b><span>seen</span></div><div class="stat"><b>'+solid+'</b><span>solid</span></div><div class="stat"><b>'+streak()+'</b><span>day streak</span></div></div>';
   var bars='',max=1,vals=[];
   for(var i=13;i>=0;i--){var d=new Date(Date.now()-i*DAY),k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),v=S.history[k]||0;vals.push(v);if(v>max)max=v;}
@@ -642,7 +668,7 @@ function startDue(){startSession(dueQueue(activeCards()).map(function(c){return 
 function renderStudy(){
   if(!session){
     var q=dueQueue(activeCards());
-    mainEl.innerHTML='<h1>Study</h1><p class="sub">'+(q.length?q.length+' cards ready.':'Nothing due right now.')+'</p>'+selbar(q)+'<div class="row"><button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button><button class="btn ghost" data-act="cram">Practice all (shuffled)</button></div>';
+    mainEl.innerHTML='<h1>Study</h1><p class="sub">'+(q.length?q.length+' cards ready.':'Nothing due right now.')+'</p>'+selbar(q)+'<div class="row"><button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button><button class="btn ghost" data-act="cram">Practice all (shuffled)</button><button class="btn ghost" data-act="drive">Drive mode</button></div>';
     return;
   }
   var s=session;
@@ -2241,6 +2267,531 @@ document.addEventListener('click',function(e){
     case 'wx_clear':S.wx=null;save();closeModal();render();toast('Using sample reports');break;
   }
 });
+
+/* ---------- drive mode: hands-free study ---------- */
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+var TTS=('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window);
+var drive=null,micOn=false,heardTxt='',voiceBlocked='',netFails=0,testMsg='',primed=false,actx=null,wake=null;
+var DRV_DEF={rate:1,think:6,wait:6,src:'due',mins:20,voice:true,sounds:true,verified:false,voiceURI:'',extra:false};
+function dset(){
+  var d=S.settings.drive;if(!d||typeof d!=='object'){d={};S.settings.drive=d;}
+  for(var k in DRV_DEF)if(d[k]===undefined)d[k]=DRV_DEF[k];
+  return d;
+}
+
+/* SPK-BEGIN: turn card text into text that sounds right when read aloud */
+var SPK_ACR=['IFR','VFR','IMC','VMC','ATC','ELT','VOR','ACS','CFR','POH','AFM','PHAK','FAA','FAR','TFR','ATIS','CTAF','GPS','DME','ILS','PIC','SRM','ADM','CFIT','DPE','FSS','EIS','PFD','MFD','AIM','TAEFC','AWOS','ASOS','ADF','NDB','VHF','AC','DC','CO','AP','PTRM'];
+var SPK_ACR_RE=new RegExp('\\b('+SPK_ACR.join('|')+')\\b','g');
+var SPK_RE=[
+ [/\bADS-B\b/g,'A D S B'],
+ [/\bA\/P\b/g,'autopilot'],
+ [/\bSTBY BATT\b/g,'standby battery'],
+ [/\bSTBY\b/g,'standby'],
+ [/\bALT STATIC AIR\b/g,'alternate static air'],
+ [/\bALT and BAT\b/g,'alternator and battery'],
+ [/\bCABIN HT\b/g,'cabin heat'],
+ [/\bBATT\b/g,'battery'],
+ [/\bTRIM DISC\b/g,'trim disconnect'],
+ [/\bLVL\b/g,'level'],
+ [/\bIMSAFE\b/g,"I'M SAFE"],
+ [/\bATOMATOFLAMES\b/g,'Atomato flames'],
+ [/\bNWKRAFT\b/g,'N W K raft'],
+ [/\bKIAS\b/g,'knots indicated airspeed'],
+ [/\bKCAS\b/g,'knots calibrated airspeed'],
+ [/\bKTAS\b/g,'knots true airspeed'],
+ [/\bkts?\b/g,'knots'],
+ [/\bAGL\b/g,'above ground level'],
+ [/\bMSL\b/g,'mean sea level'],
+ [/\b1 NM\b/g,'1 nautical mile'],
+ [/\bNM\b/g,'nautical miles'],
+ [/\b1 SM\b/g,'1 statute mile'],
+ [/\bSM\b/g,'statute miles'],
+ [/\bft\/min\b/gi,'feet per minute'],
+ [/\bfpm\b/gi,'feet per minute'],
+ [/\bft\b/g,'feet'],
+ [/\bpsi\b/gi,'P S I'],
+ [/\bRPM\b/g,'R P M'],
+ [/\bMHz\b/g,'megahertz'],
+ [/\b(\d{2})\.(\d{3})\b(?:\(([a-z])\))?/g,function(m,a,b,p){return a+' point '+b.split('').join(' ')+(p?' '+p:'');}],
+ [/(\d)\s*°/g,'$1 degrees'],
+ [/(\d)\s*%/g,'$1 percent'],
+ [/%/g,' percent'],
+ [/&/g,' and '],
+ [/\s[-–—]\s/g,', '],
+ [/->|=>|→/g,', then '],
+ [/\b(7500|7600|7700)\b/g,function(m){return m.split('').join(' ');}]
+];
+function speechify(t){
+  var s=String(t==null?'':t).replace(/\*\*/g,'').replace(/\{\{|\}\}/g,'');
+  SPK_RE.forEach(function(p){s=s.replace(p[0],p[1]);});
+  s=s.replace(SPK_ACR_RE,function(m){return m.split('').join(' ');});
+  var lines=s.split(/\n+/).map(function(l){return l.trim();}).filter(Boolean).map(function(l){
+    return l.replace(/^([A-Za-z]):\s+/,'$1, ').replace(/^([A-Za-z])\s+(?=[A-Z][a-z])/,'$1, ').replace(/^(\d+)\.\s+/,'$1, ');
+  });
+  var out='';
+  lines.forEach(function(l,i){out+=(i?(/[.!?:;,]$/.test(lines[i-1])?' ':'. '):'')+l;});
+  return out.replace(/\s{2,}/g,' ').trim();
+}
+function spkChunks(t){
+  var bits=String(t).split(/([.!?;])\s+/),parts=[],out=[],cur='',i;
+  for(i=0;i<bits.length;i+=2)parts.push(bits[i]+(bits[i+1]||''));
+  parts.forEach(function(p){if(cur&&(cur+' '+p).length>200){out.push(cur);cur=p;}else cur=cur?cur+' '+p:p;});
+  if(cur.trim())out.push(cur);
+  return out;
+}
+/* SPK-END */
+
+/* pieces of a card, in speech form */
+function dSplit(c){
+  var main,extra=[];
+  if(c.type==='cloze'){main=String(c.front).replace(/\{\{(.+?)\}\}/g,'$1');if(c.back)extra=[c.back];}
+  else{var parts=String(c.back||'').split(/\n\s*\n/);main=parts[0];extra=parts.slice(1);}
+  return {main:main,extra:extra};
+}
+function qSpeech(c){return speechify(c.type==='cloze'?String(c.front).replace(/\{\{(.+?)\}\}/g,' blank '):c.front);}
+function ansSpeech(d){var sp=d.sp;return 'Answer. '+speechify(dset().extra&&sp.extra.length?sp.main+'\n\n'+sp.extra.join('\n\n'):sp.main);}
+function moreSpeech(d){
+  var sp=d.sp,fu=(d.card.followups||[]);
+  if(!sp.extra.length&&!fu.length)return 'That is all I have for this card.';
+  var s=sp.extra.length?speechify(sp.extra.join('\n\n')):'';
+  if(fu.length)s+=(s?' ':'')+'Likely follow-up questions. '+fu.map(function(f){return speechify(f);}).join('. ');
+  return s;
+}
+function hintSpeech(d){return 'It starts with: '+speechify(d.sp.main).split(' ').slice(0,2).join(' ');}
+
+/* sounds */
+function audioInit(){
+  try{var AC=window.AudioContext||window.webkitAudioContext;if(AC&&!actx)actx=new AC();if(actx&&actx.state==='suspended')actx.resume();}catch(e){}
+  try{if(TTS){var u=new SpeechSynthesisUtterance(' ');u.volume=0;window.speechSynthesis.speak(u);}}catch(e2){}
+}
+function tone(f,t0,dur,vol){
+  if(!actx)return;var o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime+t0;
+  o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur+0.03);
+}
+function chime(kind){
+  if(!dset().sounds||!actx)return;
+  try{
+    if(kind==='ready')tone(880,0,0.12,0.16);
+    else if(kind==='good'){tone(660,0,0.1,0.16);tone(990,0.1,0.14,0.16);}
+    else if(kind==='miss')tone(300,0,0.22,0.18);
+    else if(kind==='skip')tone(520,0,0.08,0.14);
+  }catch(e){}
+}
+
+/* speaking */
+var spkTok=0,spkFb=null;
+function cancelSpeech(){spkTok++;clearTimeout(spkFb);if(TTS){try{window.speechSynthesis.cancel();}catch(e){}}}
+function pickVoice(){
+  if(!TTS)return null;
+  var vs=window.speechSynthesis.getVoices()||[],uri=dset().voiceURI,i;
+  if(uri)for(i=0;i<vs.length;i++)if(vs[i].voiceURI===uri)return vs[i];
+  var en=vs.filter(function(v){return /^en[-_]US/i.test(v.lang||'');});
+  var best=en.filter(function(v){return /(premium|enhanced|siri|samantha|ava|allison|nicky|zoe)/i.test(v.name||'');});
+  return best[0]||en[0]||null;
+}
+function speak(text,cb){
+  cancelSpeech();
+  var tok=spkTok,set=dset(),cs=spkChunks(text),i=0,est=String(text).length*80/set.rate+3000;
+  function done(){if(tok!==spkTok)return;spkTok++;clearTimeout(spkFb);if(cb)cb();}
+  if(!TTS||!cs.length){spkFb=setTimeout(done,Math.min(est,9000));return;}
+  spkFb=setTimeout(done,est+cs.length*1200);
+  function next(){
+    if(tok!==spkTok)return;
+    if(i>=cs.length){done();return;}
+    var u=new SpeechSynthesisUtterance(cs[i++]),v=pickVoice();
+    if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-US';
+    u.rate=set.rate;u.pitch=1;u.volume=1;
+    u.onend=function(){if(tok===spkTok)next();};
+    u.onerror=function(ev){if(tok!==spkTok)return;if(ev&&(ev.error==='interrupted'||ev.error==='canceled'))return;next();};
+    try{window.speechSynthesis.speak(u);}catch(e){next();}
+  }
+  next();
+}
+
+/* listening */
+var rec=null,recGen=0,recTimer=null;
+function recStop(){
+  recGen++;clearTimeout(recTimer);recTimer=null;micOn=false;
+  if(rec){try{rec.onresult=null;rec.onerror=null;rec.onend=null;rec.abort();}catch(e){}rec=null;}
+  paintMic();
+}
+function voiceUsable(){return !!(SR&&dset().voice&&!voiceBlocked);}
+function listenFor(ms,onText,onTimeout){
+  recStop();
+  var gen=recGen;heardTxt='';
+  if(ms>0)recTimer=setTimeout(function(){if(gen!==recGen)return;recStop();if(onTimeout)onTimeout();},ms);
+  if(!voiceUsable()){paintMic();return;}
+  function begin(){
+    if(gen!==recGen||!voiceUsable())return;
+    var r;
+    try{r=new SR();}catch(e){voiceBlocked='unsupported';paintMic();return;}
+    r.lang='en-US';r.continuous=false;r.interimResults=true;r.maxAlternatives=3;
+    rec=r;micOn=true;paintMic();
+    r.onresult=function(ev){
+      if(gen!==recGen)return;
+      var texts=[],i,a;
+      for(i=ev.resultIndex;i<ev.results.length;i++)for(a=0;a<ev.results[i].length;a++)texts.push(ev.results[i][a].transcript);
+      if(!texts.length)return;
+      netFails=0;heardTxt=String(texts[0]).trim();paintMic();
+      for(i=0;i<texts.length;i++)if(onText(texts[i]))return;
+    };
+    r.onerror=function(ev){
+      if(gen!==recGen)return;
+      var er=ev&&ev.error;
+      if(er==='not-allowed'||er==='service-not-allowed'||er==='audio-capture'){voiceBlocked=er;micOn=false;paintMic();}
+      else if(er==='network'){netFails++;if(netFails>=3){voiceBlocked='network';micOn=false;paintMic();}}
+    };
+    r.onend=function(){
+      if(gen!==recGen)return;
+      rec=null;micOn=false;paintMic();
+      setTimeout(begin,200);
+    };
+    try{r.start();}catch(e2){rec=null;micOn=false;setTimeout(begin,400);}
+  }
+  begin();
+}
+function primeMic(){
+  if(primed||!SR||!dset().voice)return;
+  primed=true;
+  try{
+    var r=new SR();r.lang='en-US';
+    r.onerror=function(ev){var er=ev&&ev.error;if(er==='not-allowed'||er==='service-not-allowed')voiceBlocked=er;};
+    r.onend=function(){};
+    r.start();setTimeout(function(){try{r.abort();}catch(e){}},900);
+  }catch(e2){}
+}
+function parseCmd(t,phase){
+  t=' '+String(t).toLowerCase().replace(/[^a-z' ]+/g,' ').replace(/\s+/g,' ')+' ';
+  function has(re){return re.test(t);}
+  if(has(/ (end|finish|stop|quit) (the |this )?(session|drive|study|drive mode) /)||has(/ (i'm|i am|we're|we are) done /)||has(/ that's all /))return 'end';
+  if(phase==='paused'){if(has(/ (resume|continue|keep going|go on|start|unpause|go) /))return 'resume';return '';}
+  if(has(/ (pause|hold on|hold up|wait|stop) /))return 'pause';
+  if(has(/ (repeat|say that again|say it again|read it again|come again|say again) /))return 'repeat';
+  if(has(/ (skip|next|pass|move on) /))return 'skip';
+  if(has(/ (slower|slow down) /))return 'slower';
+  if(has(/ (faster|speed up) /))return 'faster';
+  if(has(/ flag /))return 'flag';
+  if(has(/ (hint|clue) /))return 'hint';
+  if(phase==='think'&&has(/ (answer|show|reveal|what is it|what's the answer|i don't know|i do not know|no idea|don't know) /))return 'answer';
+  if(phase==='grade'){
+    if(has(/ (more|explain|tell me more|details|elaborate) /))return 'more';
+    if(has(/ (missed|miss|wrong|nope|no|incorrect|didn't know|did not know|didn't get it|forgot) /))return 'g1';
+    if(has(/ (hard|shaky|barely|struggled) /))return 'g2';
+    if(has(/ (easy|solid|nailed it|knew it) /))return 'g4';
+    if(has(/ (got it|got|good|yes|yeah|yep|correct|right) /))return 'g3';
+  }
+  return '';
+}
+
+/* keeping the screen on */
+function wakeOn(){
+  try{if(navigator.wakeLock&&navigator.wakeLock.request){navigator.wakeLock.request('screen').then(function(l){wake=l;l.addEventListener('release',function(){wake=null;});}).catch(function(){});return true;}}catch(e){}
+  return false;
+}
+function wakeOff(){try{if(wake){wake.release();wake=null;}}catch(e){}}
+
+/* the session */
+function okg(d,g){return drive===d&&!!d&&d.gen===g&&!d.finished;}
+function timeLabel(d){return d.endAt?fmtClock(d.endAt-Date.now())+' left':'';}
+function fmtClock(ms){ms=Math.max(0,Math.round(ms/1000));var m=Math.floor(ms/60),s=ms%60;return m+':'+(s<10?'0':'')+s;}
+function driveKeys(src){
+  var set=dset(),cards=activeCards().filter(function(c){return plain(c.front).trim()&&(set.verified||!c.verify);});
+  if(src==='weak')return cards.filter(isWeak).map(function(c){return c.key;});
+  if(src==='all')return shuffle(cards.map(function(c){return c.key;}));
+  return dueQueue(cards).map(function(c){return c.key;});
+}
+function driveStart(){
+  var set=dset(),keys=driveKeys(set.src);
+  if(!keys.length){toast('Nothing to study with these settings.');return;}
+  audioInit();primeMic();
+  var d={active:true,subject:S.currentSubject,queue:keys,idx:0,gen:0,phase:'q',finished:false,cram:set.src==='all',graded:0,
+    endAt:set.mins>0?Date.now()+set.mins*60000:0,stats:{good:0,hard:0,easy:0,missed:[],skipped:0,ungraded:0},req:{},card:null,sp:null,wakeOk:false};
+  drive=d;d.wakeOk=wakeOn();document.body.classList.add('driving');
+  d.tick=setInterval(function(){var el=$('dtime');if(el&&drive===d&&!d.finished)el.textContent=timeLabel(d);},1000);
+  var g=++d.gen,intro=voiceUsable()?
+    'Drive mode. '+keys.length+' cards. After each answer, say got it, or missed it. Say pause to stop.':
+    'Drive mode. '+keys.length+' cards. Voice commands are off, so each card moves on by itself.';
+  d.phase='q';render();
+  speak(intro,function(){if(okg(d,g))dBegin();});
+}
+function dBegin(){
+  var d=drive;if(!d||d.finished)return;
+  if((d.endAt&&Date.now()>=d.endAt)||d.idx>=d.queue.length){dFinish();return;}
+  var c=getCard(d.queue[d.idx]);
+  if(!c){d.idx++;dBegin();return;}
+  d.card=c;d.sp=dSplit(c);
+  var g=++d.gen;d.phase='q';recStop();paintDrive();
+  speak(qSpeech(c),function(){if(okg(d,g))dThink(g);});
+}
+function dThink(g){
+  var d=drive;if(!okg(d,g))return;
+  d.phase='think';paintDrive();chime('ready');
+  listenFor(dset().think*1000,function(t){return dCmd(parseCmd(t,'think'),g);},function(){if(okg(d,g))dAnswer(g);});
+}
+function dAnswer(g){
+  var d=drive;if(!okg(d,g))return;
+  d.phase='a';recStop();paintDrive();
+  speak(ansSpeech(d),function(){if(okg(d,g))dGrade(g);});
+}
+function dGrade(g){
+  var d=drive;if(!okg(d,g))return;
+  d.phase='grade';paintDrive();chime('ready');
+  listenFor(dset().wait*1000,function(t){return dCmd(parseCmd(t,'grade'),g);},function(){if(okg(d,g))dRate(0);});
+}
+function dToAnswer(){var d=drive;if(!d||d.finished)return;var g=++d.gen;recStop();dAnswer(g);}
+function dRepeat(){
+  var d=drive;if(!d||d.finished||!d.card)return;
+  var g=++d.gen;recStop();
+  if(d.phase==='grade'||d.phase==='a'){d.phase='a';paintDrive();speak(ansSpeech(d),function(){if(okg(d,g))dGrade(g);});}
+  else{d.phase='q';paintDrive();speak(qSpeech(d.card),function(){if(okg(d,g))dThink(g);});}
+}
+function dHint(){
+  var d=drive;if(!d||d.finished||d.phase!=='think')return;
+  var g=++d.gen;recStop();d.phase='q';paintDrive();
+  speak(hintSpeech(d),function(){if(okg(d,g))dThink(g);});
+}
+function dMore(){
+  var d=drive;if(!d||d.finished||d.phase!=='grade')return;
+  var g=++d.gen;recStop();d.phase='a';paintDrive();
+  speak(moreSpeech(d),function(){if(okg(d,g))dGrade(g);});
+}
+function dNote(msg){
+  var d=drive;if(!d||d.finished)return;
+  var ph=d.phase;
+  if(ph!=='think'&&ph!=='grade'){paintDrive();return;}
+  var g=++d.gen;recStop();
+  speak(msg,function(){if(!okg(d,g))return;if(ph==='think')dThink(g);else dGrade(g);});
+}
+function dFlag(){
+  var d=drive;if(!d||!d.card)return;
+  var k=d.card.key;if(S.flags[k])delete S.flags[k];else S.flags[k]=1;save();
+  dNote(S.flags[k]?'Flagged.':'Unflagged.');
+}
+function dSpeed(delta){
+  var s=dset();s.rate=Math.min(1.8,Math.max(0.6,Math.round((s.rate+delta)*100)/100));save();
+  dNote(delta<0?'Slower.':'Faster.');
+}
+function dCmd(cmd,g){
+  var d=drive;if(!cmd||!okg(d,g))return false;
+  var ph=d.phase;
+  switch(cmd){
+    case 'end':dFinish();return true;
+    case 'pause':dPause();return true;
+    case 'repeat':dRepeat();return true;
+    case 'skip':dRate(-1);return true;
+    case 'slower':dSpeed(-0.1);return true;
+    case 'faster':dSpeed(0.1);return true;
+    case 'flag':dFlag();return true;
+    case 'hint':if(ph==='think'){dHint();return true;}return false;
+    case 'more':if(ph==='grade'){dMore();return true;}return false;
+    case 'answer':if(ph==='think'){dToAnswer();return true;}return false;
+    case 'g1':case 'g2':case 'g3':case 'g4':if(ph==='grade'){dRate(parseInt(cmd.slice(1),10));return true;}return false;
+  }
+  return false;
+}
+/* r: 1 missed, 2 hard, 3 good, 4 easy, 0 no grade, -1 skipped */
+function dRate(r){
+  var d=drive;if(!d||d.finished)return;
+  var key=d.queue[d.idx],st=d.stats,g=++d.gen;
+  recStop();cancelSpeech();
+  if(r>=1){
+    if(!d.cram){
+      var existed=!!S.progress[key];
+      S.progress[key]=schedule(S.progress[key],r);
+      if(!existed){if(S.daily.date!==today())S.daily={date:today(),newCount:0};S.daily.newCount++;}
+    }
+    var t=today();S.history[t]=(S.history[t]||0)+1;save();
+    d.graded++;
+    if(r===1){
+      if(st.missed.indexOf(key)<0)st.missed.push(key);
+      if((d.req[key]||0)<2){d.req[key]=(d.req[key]||0)+1;d.queue.push(key);}
+      chime('miss');
+    }else{st[r===2?'hard':r===4?'easy':'good']++;chime('good');}
+  }else if(r===0)st.ungraded++;
+  else{st.skipped++;chime('skip');}
+  d.idx++;
+  setTimeout(function(){if(okg(d,g))dBegin();},r>=1?500:200);
+}
+function dPause(){
+  var d=drive;if(!d||d.finished||d.phase==='paused')return;
+  d.gen++;recStop();cancelSpeech();d.phase='paused';paintDrive();dListenResume();
+}
+function dListenResume(){
+  var d=drive;if(!d||d.phase!=='paused')return;
+  listenFor(300000,function(t){var c=parseCmd(t,'paused');if(c==='resume'){dResume();return true;}if(c==='end'){dFinish();return true;}return false;},function(){});
+}
+function dResume(){var d=drive;if(!d||d.phase!=='paused')return;d.gen++;recStop();dBegin();}
+function dFinish(){
+  var d=drive;if(!d||d.finished)return;
+  d.finished=true;d.gen++;recStop();cancelSpeech();wakeOff();clearInterval(d.tick);d.phase='summary';document.body.classList.remove('driving');
+  var st=d.stats,got=st.good+st.easy,msg='Session finished. '+d.graded+' graded: '+got+' got it, '+st.hard+' hard, '+st.missed.length+' missed.';
+  if(st.skipped+st.ungraded)msg+=' '+(st.skipped+st.ungraded)+' skipped or not graded.';
+  if(d.cram)msg+=' Practice mode does not change your schedule.';
+  else if(st.missed.length)msg+=' The missed ones will come back soon.';
+  paintDrive();
+  speak(msg);
+}
+function driveAbort(){
+  var d=drive;if(d){d.finished=true;d.gen++;clearInterval(d.tick);}
+  recStop();cancelSpeech();wakeOff();micOn=false;
+  document.body.classList.remove('driving');
+  drive=null;
+}
+function driveTest(){
+  audioInit();primeMic();
+  var el=$('dtest');
+  function show(m){testMsg=m;var e=$('dtest');if(e)e.textContent=m;}
+  if(!TTS)show('This browser cannot speak aloud, so drive mode will only show cards on screen.');
+  else show('Speaking...');
+  var tok=++testTok;
+  speak('Testing the voice. After the beep, say: got it.',function(){
+    if(tok!==testTok)return;
+    if(!voiceUsable()){show((TTS?'The voice works. ':'')+'Voice commands are not available ('+(voiceBlocked||(SR?'turned off':'not supported here'))+'), so drive mode will run on timers and the on-screen buttons.');return;}
+    chime('ready');show('Listening...');
+    listenFor(9000,function(t){
+      var c=parseCmd(t,'grade');
+      show('Heard: "'+String(t).trim()+'"'+(c?' (understood)':' (not a command; try saying got it)'));
+      if(c){recStop();return true;}
+      return false;
+    },function(){show(voiceBlocked?'Microphone or speech recognition was blocked ('+voiceBlocked+'). Drive mode will use timers and buttons.':'I did not hear anything. Check the microphone permission and try again.');});
+  });
+}
+var testTok=0;
+document.addEventListener('visibilitychange',function(){
+  var d=drive;if(!d||d.finished)return;
+  if(document.visibilityState==='hidden'){if(d.phase!=='paused'&&d.phase!=='summary'){d.gen++;recStop();cancelSpeech();d.phase='paused';paintDrive();}}
+  else{if(!wake)d.wakeOk=wakeOn();if(d.phase==='paused')dListenResume();}
+});
+if(TTS)window.speechSynthesis.onvoiceschanged=function(){if(view==='drive'&&!(drive&&drive.active))renderDrive();};
+
+/* screens */
+function paintMic(){
+  var m=$('dmic'),h=$('dheard');
+  if(m)m.className='micdot'+(micOn?' on':'');
+  if(!h)return;
+  var d=drive,ph=d?d.phase:'',t='';
+  if(!SR||!dset().voice)t='Voice commands off. Using timers and buttons.';
+  else if(voiceBlocked)t='Voice commands unavailable ('+voiceBlocked+'). Using timers and buttons.';
+  else if(heardTxt)t='Heard: “'+heardTxt+'”';
+  else if(micOn)t={think:'Listening: say answer, hint, repeat, skip or pause',grade:'Listening: say got it or missed it',paused:'Listening: say resume'}[ph]||'';
+  h.textContent=t;
+}
+function dBtn(act,label,cls){return '<button class="'+(cls||'')+'" data-act="'+act+'">'+label+'</button>';}
+function paintDrive(){
+  var d=drive;if(!d)return;
+  if(d.phase==='summary'){paintSummary();return;}
+  var c=d.card,ph=d.phase,showA=(ph==='a'||ph==='grade'),h='<div class="drv">';
+  h+='<div class="drvtop"><span>Card '+Math.min(d.idx+1,d.queue.length)+' of '+d.queue.length+'</span><span id="dtime">'+esc(timeLabel(d))+'</span></div>';
+  h+='<div class="drvphase" id="dphase">'+({q:'Reading',think:'Think',a:'Answer',grade:'Your turn',paused:'Paused'}[ph]||'')+'</div>';
+  if(ph==='paused'||!c){
+    h+='<div class="card drvcard"><div class="drvq">Paused</div><div class="drva" style="border:0;padding:0">Say &ldquo;resume&rdquo; or tap Resume. This card starts again from the question.</div></div>';
+  }else if(c.type==='cloze'&&showA){
+    h+='<div class="card drvcard"><div class="drvq">'+dispBack(c)+'</div></div>';
+  }else{
+    h+='<div class="card drvcard"><div class="drvq">'+dispFront(c)+'</div>'+(showA?'<div class="drva">'+dispBack(c)+'</div>':'')+'</div>';
+  }
+  h+='<div class="drvmic"><i class="micdot" id="dmic"></i><span id="dheard"></span></div>';
+  if(ph==='paused'){
+    h+='<div class="drvrate">'+dBtn('d_resume','Resume','drvbtn good')+dBtn('d_end','End session','drvbtn')+'</div>';
+  }else{
+    if(ph==='think')h+='<div class="drvrate one">'+dBtn('d_answer','Show answer','drvbtn good')+'</div>';
+    if(ph==='grade'){
+      h+='<div class="drvrate">'+dBtn('d_g3','Got it','drvbtn good')+dBtn('d_g1','Missed it','drvbtn bad')+'</div>';
+      h+='<div class="drvctl two">'+dBtn('d_g2','Hard')+dBtn('d_g4','Easy')+'</div>';
+    }
+    h+='<div class="drvctl">'+dBtn('d_repeat','Repeat')+dBtn('d_skip','Skip')+dBtn('d_pause','Pause')+dBtn('d_end','End')+'</div>';
+    var fl=c&&S.flags[c.key];
+    h+='<div class="drvlinks">'+dBtn('d_flag',fl?'Unflag':'Flag this card','link')+(ph==='think'?dBtn('d_hint','Hint','link'):'')+(ph==='grade'?dBtn('d_more','More detail','link'):'')+'</div>';
+  }
+  h+=(!d.wakeOk?'<p class="legend">This browser did not keep the screen awake. Keep the phone unlocked.</p>':'');
+  mainEl.innerHTML=h+'</div>';
+  paintMic();
+}
+function paintSummary(){
+  var d=drive,st=d.stats,got=st.good+st.easy,miss=st.missed.slice();
+  var h='<div class="drv"><h1>Drive session done</h1><p class="sub">'+d.graded+' cards graded'+(d.cram?'. Practice mode does not change your schedule.':'.')+'</p>';
+  h+='<div class="mini"><div class="stat"><b>'+got+'</b><span>got it</span></div><div class="stat"><b>'+st.missed.length+'</b><span>missed</span></div><div class="stat"><b>'+(st.skipped+st.ungraded)+'</b><span>skipped or not graded</span></div></div>';
+  if(st.hard)h+='<p class="legend" style="margin-top:10px">'+st.hard+' marked hard.</p>';
+  if(miss.length){
+    h+='<h2>Missed</h2><div class="card list">';
+    miss.forEach(function(k){var c=getCard(k);if(c)h+='<div class="item"><div class="main"><div class="t">'+esc(speechify(c.type==='cloze'?String(c.front).replace(/\{\{(.+?)\}\}/g,'___'):c.front).slice(0,140))+'</div></div></div>';});
+    h+='</div>';
+  }
+  h+='<div class="row" style="margin-top:18px">'+(miss.length?'<button class="btn" data-act="d_missed">Study the missed cards on screen</button>':'')+'<button class="btn ghost" data-act="d_again">Another round</button><button class="btn ghost" data-act="d_done">Done</button></div></div>';
+  mainEl.innerHTML=h;
+}
+function renderDrive(){
+  if(drive&&drive.subject!==S.currentSubject)driveAbort();
+  if(drive){paintDrive();return;}
+  var set=dset(),sb=subj(),cards=activeCards();
+  var h='<h1>Drive mode</h1><p class="sub">Hands-free study for the car or a walk. The app reads each card, waits for you to think, reads the answer, then listens for &ldquo;got it&rdquo; or &ldquo;missed it&rdquo;.</p>';
+  if(!cards.length){mainEl.innerHTML=h+'<div class="card empty"><p>No cards in this subject yet.</p></div>';return;}
+  var nd=driveKeys('due').length,nw=driveKeys('weak').length,na=driveKeys('all').length;
+  function opts(list,cur,lab){return list.map(function(v){return '<option value="'+v[0]+'"'+(String(v[0])===String(cur)?' selected':'')+'>'+esc(lab?lab(v):v[1])+'</option>';}).join('');}
+  var rates=[0.8,0.9,1,1.1,1.25,1.4,1.6];if(rates.indexOf(set.rate)<0){rates.push(set.rate);rates.sort(function(a,b){return a-b;});}
+  var voices=(TTS?window.speechSynthesis.getVoices()||[]:[]).filter(function(v){return /^en/i.test(v.lang||'');});
+  h+='<div class="card" style="padding:20px"><label class="label" style="margin-top:0">What to study</label><select id="d_src">'+
+    opts([['due','Due and new cards ('+nd+')'],['weak','Weak cards ('+nw+')'],['all','Everything, shuffled ('+na+'; practice only)']],set.src)+'</select>'+
+    '<label class="label">Session length</label><select id="d_mins">'+opts([[10,'10 minutes'],[20,'20 minutes'],[30,'30 minutes'],[45,'45 minutes'],[60,'1 hour'],[0,'No limit']],set.mins)+'</select>'+
+    '<label class="label">Speaking speed</label><select id="d_rate">'+opts(rates.map(function(r){return [r,r+'x'+(r===1?' (normal)':'')];}),set.rate)+'</select>'+
+    '<label class="label">Thinking time before the answer</label><select id="d_think">'+opts([[3,'3 seconds'],[5,'5 seconds'],[6,'6 seconds'],[8,'8 seconds'],[10,'10 seconds'],[15,'15 seconds'],[20,'20 seconds']],set.think)+'</select>'+
+    '<label class="label">Time to answer got it or missed it</label><select id="d_wait">'+opts([[4,'4 seconds'],[6,'6 seconds'],[8,'8 seconds'],[10,'10 seconds']],set.wait)+'</select>'+
+    (voices.length?'<label class="label">Voice</label><select id="d_voice"><option value="">Automatic</option>'+voices.map(function(v){return '<option value="'+esc(v.voiceURI)+'"'+(v.voiceURI===set.voiceURI?' selected':'')+'>'+esc(v.name+' ('+v.lang+')')+'</option>';}).join('')+'</select>':'')+
+    '<label class="check"><input type="checkbox" id="d_vc"'+(set.voice?' checked':'')+'> Voice commands (uses the microphone)</label>'+
+    '<label class="check"><input type="checkbox" id="d_snd"'+(set.sounds?' checked':'')+'> Short sounds when it is your turn and when you grade</label>'+
+    '<label class="check"><input type="checkbox" id="d_extra"'+(set.extra?' checked':'')+'> Read the extra explanation after every answer (otherwise say &ldquo;more&rdquo;)</label>'+
+    '<label class="check"><input type="checkbox" id="d_ver"'+(set.verified?' checked':'')+'> Include cards that still need verification</label>'+
+    '<div class="row" style="margin-top:18px"><button class="btn" data-act="d_start"'+(nd||nw||na?'':' disabled')+'>Start driving</button><button class="btn ghost" data-act="d_test">Test voice and microphone</button></div>'+
+    '<p class="legend" id="dtest" style="margin-top:10px">'+esc(testMsg)+'</p>'+
+    '<p class="legend">If you say nothing after an answer, the card is not graded and stays in your queue. Decks selected on Home are the ones used. Keep the phone unlocked; the screen stays on while this runs.</p>';
+  if(!TTS)h+='<p class="legend">This browser cannot read aloud, so cards will only be shown on screen.</p>';
+  else if(!SR)h+='<p class="legend">This browser has no voice recognition, so drive mode will run on timers and the on-screen buttons.</p>';
+  h+='</div>';
+  h+='<h2>Voice commands</h2><div class="card list">'+
+    [['While it waits for you','answer, hint, repeat, skip, pause, flag'],['After the answer','got it, missed it, hard, easy, more, repeat, skip'],['Any time','slower, faster, pause, end session'],['When paused','resume']].map(function(x){return '<div class="item"><div class="main"><div class="t">'+x[0]+'</div><div class="m">'+x[1]+'</div></div></div>';}).join('')+'</div>';
+  mainEl.innerHTML=h;
+}
+document.addEventListener('click',function(e){
+  var el=e.target.closest('[data-act]');if(!el)return;
+  var a=el.getAttribute('data-act');if(a!=='drive'&&a.indexOf('d_')!==0)return;
+  switch(a){
+    case 'drive':closeModal();view='drive';session=null;if(drive&&drive.finished){driveAbort();}render();break;
+    case 'd_start':driveStart();break;
+    case 'd_test':driveTest();break;
+    case 'd_g1':case 'd_g2':case 'd_g3':case 'd_g4':if(drive&&drive.phase==='grade')dRate(parseInt(a.slice(3),10));break;
+    case 'd_answer':if(drive&&drive.phase==='think')dToAnswer();break;
+    case 'd_repeat':dRepeat();break;
+    case 'd_skip':dRate(-1);break;
+    case 'd_pause':dPause();break;
+    case 'd_resume':dResume();break;
+    case 'd_end':dFinish();break;
+    case 'd_flag':dFlag();break;
+    case 'd_hint':dHint();break;
+    case 'd_more':dMore();break;
+    case 'd_missed':{var mk=drive?drive.stats.missed.slice():[];if(mk.length)startSession(mk,{title:'Missed in drive mode'});break;}
+    case 'd_again':driveAbort();render();break;
+    case 'd_done':{var cr=drive&&drive.cram,gr=drive&&drive.graded;driveAbort();if(!cr&&gr)maybeAutoBackup();view='home';render();break;}
+  }
+});
+document.addEventListener('change',function(e){
+  var t=e.target;if(!t.id||t.id.indexOf('d_')!==0)return;
+  var s=dset();
+  if(t.id==='d_src')s.src=t.value;
+  else if(t.id==='d_mins')s.mins=parseInt(t.value,10)||0;
+  else if(t.id==='d_rate')s.rate=parseFloat(t.value)||1;
+  else if(t.id==='d_think')s.think=parseInt(t.value,10)||6;
+  else if(t.id==='d_wait')s.wait=parseInt(t.value,10)||6;
+  else if(t.id==='d_voice')s.voiceURI=t.value;
+  else if(t.id==='d_vc')s.voice=t.checked;
+  else if(t.id==='d_snd')s.sounds=t.checked;
+  else if(t.id==='d_extra')s.extra=t.checked;
+  else if(t.id==='d_ver')s.verified=t.checked;
+  else return;
+  save();
+  if(t.id==='d_src'||t.id==='d_ver'||t.id==='d_vc')renderDrive();
+});
+
 
 applyTheme();
 snapshot();save();render();checkPersist();
