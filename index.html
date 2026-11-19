@@ -2321,7 +2321,7 @@ var SPK_RE=[
  [/->|=>|→/g,', then '],
  [/\b(7500|7600|7700)\b/g,function(m){return m.split('').join(' ');}]
 ];
-function speechify(t){
+function speechify(t,br){
   var s=String(t==null?'':t).replace(/\*\*/g,'').replace(/\{\{|\}\}/g,'');
   SPK_RE.forEach(function(p){s=s.replace(p[0],p[1]);});
   s=s.replace(SPK_ACR_RE,function(m){return m.split('').join(' ');});
@@ -2329,14 +2329,21 @@ function speechify(t){
     return l.replace(/^([A-Za-z]):\s+/,'$1, ').replace(/^([A-Za-z])\s+(?=[A-Z][a-z])/,'$1, ').replace(/^(\d+)\.\s+/,'$1, ');
   });
   var out='';
+  if(br)return lines.map(function(l){return /[.!?]$/.test(l)?l:l.replace(/[:;,]$/,'')+'.';}).join('\n').replace(/[ \t]{2,}/g,' ').trim();
   lines.forEach(function(l,i){out+=(i?(/[.!?:;,]$/.test(lines[i-1])?' ':'. '):'')+l;});
   return out.replace(/\s{2,}/g,' ').trim();
 }
 function spkChunks(t){
-  var bits=String(t).split(/([.!?;])\s+/),parts=[],out=[],cur='',i;
-  for(i=0;i<bits.length;i+=2)parts.push(bits[i]+(bits[i+1]||''));
-  parts.forEach(function(p){if(cur&&(cur+' '+p).length>200){out.push(cur);cur=p;}else cur=cur?cur+' '+p:p;});
-  if(cur.trim())out.push(cur);
+  var out=[];
+  String(t).split(/\n+/).forEach(function(par){
+    par=par.trim();if(!par)return;
+    var bits=par.split(/([.!?;])\s+/),parts=[],cur='',i,first=out.length;
+    for(i=0;i<bits.length;i+=2)parts.push(bits[i]+(bits[i+1]||''));
+    parts.forEach(function(p){if(cur&&(cur+' '+p).length>130){out.push({t:cur,gap:200});cur=p;}else cur=cur?cur+' '+p:p;});
+    if(cur.trim())out.push({t:cur,gap:200});
+    if(out.length>first)out[out.length-1].gap=450;
+  });
+  if(out.length)out[out.length-1].gap=0;
   return out;
 }
 /* SPK-END */
@@ -2348,13 +2355,13 @@ function dSplit(c){
   else{var parts=String(c.back||'').split(/\n\s*\n/);main=parts[0];extra=parts.slice(1);}
   return {main:main,extra:extra};
 }
-function qSpeech(c){return speechify(c.type==='cloze'?String(c.front).replace(/\{\{(.+?)\}\}/g,' blank '):c.front);}
-function ansSpeech(d){var sp=d.sp;return 'Answer. '+speechify(dset().extra&&sp.extra.length?sp.main+'\n\n'+sp.extra.join('\n\n'):sp.main);}
+function qSpeech(c){return speechify(c.type==='cloze'?String(c.front).replace(/\{\{(.+?)\}\}/g,' blank '):c.front,true);}
+function ansSpeech(d){var sp=d.sp;return 'Answer.\n'+speechify(dset().extra&&sp.extra.length?sp.main+'\n\n'+sp.extra.join('\n\n'):sp.main,true);}
 function moreSpeech(d){
   var sp=d.sp,fu=(d.card.followups||[]);
   if(!sp.extra.length&&!fu.length)return 'That is all I have for this card.';
-  var s=sp.extra.length?speechify(sp.extra.join('\n\n')):'';
-  if(fu.length)s+=(s?' ':'')+'Likely follow-up questions. '+fu.map(function(f){return speechify(f);}).join('. ');
+  var s=sp.extra.length?speechify(sp.extra.join('\n\n'),true):'';
+  if(fu.length)s+=(s?'\n':'')+'Likely follow-up questions.\n'+fu.map(function(f){return speechify(f,true);}).join('\n');
   return s;
 }
 function hintSpeech(d){return 'It starts with: '+speechify(d.sp.main).split(' ').slice(0,2).join(' ');}
@@ -2382,28 +2389,40 @@ function chime(kind){
 /* speaking */
 var spkTok=0,spkFb=null;
 function cancelSpeech(){spkTok++;clearTimeout(spkFb);if(TTS){try{window.speechSynthesis.cancel();}catch(e){}}}
+var BAD_VOICE=/(albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|grandma|grandpa|eddy|flo|reed|rocko|sandy|shelley|novelty)/i;
+function voiceScore(v){
+  var n=(v.name||'')+' '+(v.voiceURI||''),s=0,l=v.lang||'';
+  if(/premium/i.test(n))s+=60;else if(/enhanced/i.test(n))s+=45;else if(/siri/i.test(n))s+=40;
+  if(/compact/i.test(n))s-=20;
+  if(BAD_VOICE.test(v.name||''))s-=100;
+  if(/^en[-_]US/i.test(l))s+=12;else if(/^en[-_](GB|AU|IE|CA|ZA)/i.test(l))s+=5;else if(!/^en/i.test(l))s-=100;
+  if(/(ava|zoe|evan|nathan|allison|samantha|tom|susan|joelle|noelle|nicky|aaron|google us english)/i.test(v.name||''))s+=8;
+  if(v.localService===false)s-=2;
+  return s;
+}
+function rankedVoices(){return (window.speechSynthesis.getVoices()||[]).filter(function(v){return voiceScore(v)>-50;}).sort(function(a,b){return voiceScore(b)-voiceScore(a);});}
+function voiceTier(v){var n=(v.name||'')+' '+(v.voiceURI||'');return /premium/i.test(n)?'Premium':/enhanced/i.test(n)?'Enhanced':/siri/i.test(n)?'Siri':'';}
 function pickVoice(){
   if(!TTS)return null;
   var vs=window.speechSynthesis.getVoices()||[],uri=dset().voiceURI,i;
   if(uri)for(i=0;i<vs.length;i++)if(vs[i].voiceURI===uri)return vs[i];
-  var en=vs.filter(function(v){return /^en[-_]US/i.test(v.lang||'');});
-  var best=en.filter(function(v){return /(premium|enhanced|siri|samantha|ava|allison|nicky|zoe)/i.test(v.name||'');});
-  return best[0]||en[0]||null;
+  return rankedVoices()[0]||null;
 }
 function speak(text,cb){
   cancelSpeech();
-  var tok=spkTok,set=dset(),cs=spkChunks(text),i=0,est=String(text).length*80/set.rate+3000;
+  var tok=spkTok,set=dset(),cs=spkChunks(text),i=0,est=String(text).length*80/set.rate+3000+cs.length*450;
   function done(){if(tok!==spkTok)return;spkTok++;clearTimeout(spkFb);if(cb)cb();}
   if(!TTS||!cs.length){spkFb=setTimeout(done,Math.min(est,9000));return;}
   spkFb=setTimeout(done,est+cs.length*1200);
   function next(){
     if(tok!==spkTok)return;
     if(i>=cs.length){done();return;}
-    var u=new SpeechSynthesisUtterance(cs[i++]),v=pickVoice();
+    var ck=cs[i++],gap=ck.gap,u=new SpeechSynthesisUtterance(ck.t),v=pickVoice();
     if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-US';
     u.rate=set.rate;u.pitch=1;u.volume=1;
-    u.onend=function(){if(tok===spkTok)next();};
-    u.onerror=function(ev){if(tok!==spkTok)return;if(ev&&(ev.error==='interrupted'||ev.error==='canceled'))return;next();};
+    function adv(){if(tok!==spkTok)return;if(gap&&i<cs.length)setTimeout(next,gap);else next();}
+    u.onend=adv;
+    u.onerror=function(ev){if(tok!==spkTok)return;if(ev&&(ev.error==='interrupted'||ev.error==='canceled'))return;adv();};
     try{window.speechSynthesis.speak(u);}catch(e){next();}
   }
   next();
@@ -2730,14 +2749,14 @@ function renderDrive(){
   var nd=driveKeys('due').length,nw=driveKeys('weak').length,na=driveKeys('all').length;
   function opts(list,cur,lab){return list.map(function(v){return '<option value="'+v[0]+'"'+(String(v[0])===String(cur)?' selected':'')+'>'+esc(lab?lab(v):v[1])+'</option>';}).join('');}
   var rates=[0.8,0.9,1,1.1,1.25,1.4,1.6];if(rates.indexOf(set.rate)<0){rates.push(set.rate);rates.sort(function(a,b){return a-b;});}
-  var voices=(TTS?window.speechSynthesis.getVoices()||[]:[]).filter(function(v){return /^en/i.test(v.lang||'');});
+  var voices=TTS?rankedVoices():[],curV=TTS?pickVoice():null,good=voices.some(function(v){return !!voiceTier(v);});
   h+='<div class="card" style="padding:20px"><label class="label" style="margin-top:0">What to study</label><select id="d_src">'+
     opts([['due','Due and new cards ('+nd+')'],['weak','Weak cards ('+nw+')'],['all','Everything, shuffled ('+na+'; practice only)']],set.src)+'</select>'+
     '<label class="label">Session length</label><select id="d_mins">'+opts([[10,'10 minutes'],[20,'20 minutes'],[30,'30 minutes'],[45,'45 minutes'],[60,'1 hour'],[0,'No limit']],set.mins)+'</select>'+
     '<label class="label">Speaking speed</label><select id="d_rate">'+opts(rates.map(function(r){return [r,r+'x'+(r===1?' (normal)':'')];}),set.rate)+'</select>'+
     '<label class="label">Thinking time before the answer</label><select id="d_think">'+opts([[3,'3 seconds'],[5,'5 seconds'],[6,'6 seconds'],[8,'8 seconds'],[10,'10 seconds'],[15,'15 seconds'],[20,'20 seconds']],set.think)+'</select>'+
     '<label class="label">Time to answer got it or missed it</label><select id="d_wait">'+opts([[4,'4 seconds'],[6,'6 seconds'],[8,'8 seconds'],[10,'10 seconds']],set.wait)+'</select>'+
-    (voices.length?'<label class="label">Voice</label><select id="d_voice"><option value="">Automatic</option>'+voices.map(function(v){return '<option value="'+esc(v.voiceURI)+'"'+(v.voiceURI===set.voiceURI?' selected':'')+'>'+esc(v.name+' ('+v.lang+')')+'</option>';}).join('')+'</select>':'')+
+    (voices.length?'<label class="label">Voice</label><select id="d_voice"><option value="">Automatic'+(curV?' ('+esc(curV.name)+')':'')+'</option>'+voices.map(function(v){var t=voiceTier(v);return '<option value="'+esc(v.voiceURI)+'"'+(v.voiceURI===set.voiceURI?' selected':'')+'>'+esc(v.name+(t?' - '+t:'')+' ('+v.lang+')')+'</option>';}).join('')+'</select><div class="row" style="margin-top:10px"><button class="btn ghost small" data-act="d_preview">Hear this voice</button></div>'+(good?'':'<p class="legend" style="margin-top:10px">Sounds robotic? This phone is only offering basic voices. On iPhone, open Settings, Accessibility, Spoken Content, Voices, English, and download an Enhanced or Premium voice (Ava or Zoe are good). Then close and reopen this app and pick it here. If it still does not appear, iOS is not sharing it with web pages.</p>'):'')+
     '<label class="check"><input type="checkbox" id="d_vc"'+(set.voice?' checked':'')+'> Voice commands (uses the microphone)</label>'+
     '<label class="check"><input type="checkbox" id="d_snd"'+(set.sounds?' checked':'')+'> Short sounds when it is your turn and when you grade</label>'+
     '<label class="check"><input type="checkbox" id="d_extra"'+(set.extra?' checked':'')+'> Read the extra explanation after every answer (otherwise say &ldquo;more&rdquo;)</label>'+
@@ -2759,6 +2778,7 @@ document.addEventListener('click',function(e){
     case 'drive':closeModal();view='drive';session=null;if(drive&&drive.finished){driveAbort();}render();break;
     case 'd_start':driveStart();break;
     case 'd_test':driveTest();break;
+    case 'd_preview':audioInit();speak('Which of these is required for flight in IMC?\nAnswer.\nThe six elements are checked before every flight, and the pilot decides what to do with them.');break;
     case 'd_g1':case 'd_g2':case 'd_g3':case 'd_g4':if(drive&&drive.phase==='grade')dRate(parseInt(a.slice(3),10));break;
     case 'd_answer':if(drive&&drive.phase==='think')dToAnswer();break;
     case 'd_repeat':dRepeat();break;
@@ -2782,7 +2802,7 @@ document.addEventListener('change',function(e){
   else if(t.id==='d_rate')s.rate=parseFloat(t.value)||1;
   else if(t.id==='d_think')s.think=parseInt(t.value,10)||6;
   else if(t.id==='d_wait')s.wait=parseInt(t.value,10)||6;
-  else if(t.id==='d_voice')s.voiceURI=t.value;
+  else if(t.id==='d_voice'){s.voiceURI=t.value;save();audioInit();speak('This is how the cards will sound.');return;}
   else if(t.id==='d_vc')s.voice=t.checked;
   else if(t.id==='d_snd')s.sounds=t.checked;
   else if(t.id==='d_extra')s.extra=t.checked;
