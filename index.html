@@ -1439,6 +1439,11 @@ function numMatches(t){
   while((x=re.exec(t)))o.push({n:x[2],u:x[3],s:x[2]+(t.substr(x.index+x[1].length+x[2].length,1)===' '?' ':'')+x[3]});
   return o;
 }
+function numLeads(t,m){
+  var re=/\d[\d,]*(?:\.\d+)?/g,x=re.exec(t);
+  if(!x)return false;
+  return x[0].replace(/,$/,'')===m.n&&!/^\s?(\/|to\b|-\d)/.test(t.slice(x.index+x[0].length));
+}
 function fmtNum(v,dec,comma){var s=dec?v.toFixed(dec):String(Math.round(v));return comma?s.replace(/\B(?=(\d{3})+(?!\d))/g,','):s;}
 function numItems(r,max){
   var cards=[],items=[];
@@ -1448,6 +1453,7 @@ function numItems(r,max){
     if(b.indexOf('\n')>-1||b.length>170||f.length>220)return;
     var m=numMatches(b);if(m.length!==1)return;
     if(f.indexOf(m[0].n)>-1)return;
+    if(!numLeads(b,m[0]))return;
     cards.push({c:c,m:m[0]});
   });
   shufR(cards,r).forEach(function(x){
@@ -1611,6 +1617,213 @@ function seqPick(ci){
   paintSeq();
 }
 function seqNext(){var g=game;if(!g||!g.done)return;g.i++;if(g.i>=g.list.length){g.phase='end';var b=bestOf('seq:'+g.kind);setBest('seq:'+g.kind,{plays:(b.plays||0)+1,perfect:Math.max(b.perfect||0,g.perfect)});save();render();}else{seqSetup();paintSeq();}}
+
+/* ---------- typed recall games ---------- */
+var STOPW={the:1,and:1,for:1,with:1,from:1,that:1,this:1,when:1,are:1,you:1,your:1};
+function rnorm(t){return String(t==null?'':t).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').replace(/^(the|a|an) /,'').trim();}
+function lev(a,b){
+  if(a===b)return 0;var m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  var prev=[],cur=[],i,j;for(j=0;j<=n;j++)prev[j]=j;
+  for(i=1;i<=m;i++){cur[0]=i;for(j=1;j<=n;j++)cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a.charAt(i-1)===b.charAt(j-1)?0:1));var t=prev;prev=cur;cur=t;}
+  return prev[n];
+}
+function rtol(n){return n<=4?0:n<=8?1:n<=14?2:3;}
+function rvariants(ans){
+  var out=[String(ans)],a=String(ans);
+  var np=a.replace(/\s*\([^)]*\)/g,'').trim();if(np&&np!==a)out.push(np);
+  a.split(/\s+(?:\/|or)\s+/).forEach(function(x){x=x.trim();if(x&&out.indexOf(x)<0)out.push(x);});
+  var m=/^(.+?)\s+-\s+(.+)$/.exec(np||a);if(m){out.push(m[1].trim());}
+  return out;
+}
+function rflat(t){return String(t==null?'':t).toLowerCase().replace(/&/g,'').replace(/[^a-z0-9]/g,'');}
+function rdig(t){return (String(t).match(/\d+/g)||[]).join(',');}
+function rtok(u,w){
+  if(u===w)return true;
+  if(/\d/.test(u)||/\d/.test(w))return false;
+  if(w.length===4)return u.length===3&&lev(u,w)===1;
+  return w.length>=5&&u.length>=4&&lev(u,w)<=(w.length<=8?1:2);
+}
+function rmatch(user,ans){
+  var nu=rnorm(user);if(!nu)return false;
+  var fu=rflat(user),vs=rvariants(ans);
+  for(var i=0;i<vs.length;i++){
+    var nv=rnorm(vs[i]);if(!nv)continue;
+    if(nu===nv||fu===rflat(vs[i]))return true;
+    var tv=nv.split(' ').filter(function(w){return w&&!STOPW[w]&&(w.length>1||/\d/.test(w));}),tu=nu.split(' ').filter(function(w){return w&&!STOPW[w];});
+    if(!tv.length||!tu.length)continue;
+    var hit=0,first=false,miss=0;
+    tu.forEach(function(u){if(tv.some(function(w){return rtok(u,w);}))hit++;else miss++;});
+    var cov=0;tv.forEach(function(w,k){if(tu.some(function(u){return rtok(u,w);})){cov++;if(k===0&&w.length>=3&&!/\d/.test(w))first=true;}});
+    var c=cov/tv.length;
+    if(miss===0&&(c>=0.5||first))return true;
+    if(c>=0.67&&miss<=1&&tv.length>=3)return true;
+  }
+  return false;
+}
+function protNum(t){return t.replace(/(\d),(?=\d{3}(?!\d))/g,'$1\u0001');}
+function unprotNum(t){return t.replace(/\u0001/g,',');}
+function parseList(t,front){
+  t=protNum(plain(t).replace(/\n+/g,', ').trim().replace(/[.!]+$/,''));
+  if(!t||/[:=]/.test(t)||t.length>240)return null;
+  if((t.match(/\(/g)||[]).length!==(t.match(/\)/g)||[]).length)return null;
+  var parts=[],depth=0,cur='';
+  for(var i=0;i<t.length;i++){var ch=t.charAt(i);if(ch==='(')depth++;if(ch===')')depth--;if((ch===','||ch===';')&&depth===0){parts.push(cur);cur='';}else cur+=ch;}
+  parts.push(cur);
+  parts=parts.map(function(x){return unprotNum(x.replace(/^\s*(and|or)\s+/i,'').trim());}).filter(Boolean);
+  if(parts.length<3||parts.length>10)return null;
+  var seen={},bad=false,short=true;
+  parts.forEach(function(x){var w=x.split(/\s+/).length;if(x.length>46||w>6||/\.\s/.test(x))bad=true;if(w>3)short=false;var k=rnorm(x);if(seen[k])bad=true;seen[k]=1;});
+  if(bad)return null;
+  var lf=/^(name|list|what are|what's|which|what do|what does|what documents|what must|what equipment|give|identify)/i.test(plain(front).trim());
+  if(!lf&&!(short&&parts.length>=4))return null;
+  return parts;
+}
+function listPool(){
+  var out=[];
+  gcards().forEach(function(c){
+    if(c.type==='cloze'||(gopts.verified&&c.verify))return;
+    var b=String(c.back||'');if(b.indexOf('\n')>-1&&!/^[^\n]+(\n\s*[-*•]\s*[^\n]+)+\s*$/.test(b))b=b.split('\n')[0];
+    var items=parseList(b,c.front)||parseList(qb(c),c.front);
+    if(!items)return;
+    out.push({kind:'list',key:c.key,title:plain(c.front),items:items});
+  });
+  return out;
+}
+function numTypedPool(){
+  var out=[];
+  gcards().forEach(function(c){
+    if(c.type==='cloze'||(gopts.verified&&c.verify))return;
+    var b=plain(qb(c)),f=plain(c.front);
+    if(b.indexOf('\n')>-1||b.length>170||f.length>220)return;
+    var m=numMatches(b);if(m.length!==1)return;
+    if(f.indexOf(m[0].n)>-1)return;
+    if(!numLeads(b,m[0]))return;
+    out.push({c:c,m:m[0]});
+  });
+  return out;
+}
+function rcPages(kind,hard){
+  var pages=[];
+  if(kind==='mnem'){
+    mnemList().forEach(function(m){
+      var f=m.steps.map(function(w,i){return {label:m.labels[i],ans:w,det:m.det[i]||''};});
+      if(hard)f.unshift({label:'Acronym',ans:m.acr,acr:true});
+      var ttl=m.title,i=ttl.indexOf(':');
+      var head=hard?(i>0?ttl.slice(i+1).trim():ttl.replace(m.acr,'?????')):ttl+(m.acr?'  ('+m.acr+')':'');
+      pages.push({kind:'mnem',title:head,sub:hard?'Type the acronym, then what each letter stands for':'Type what each letter stands for',fields:f,note:m.note,verify:m.verify,mode:'fields'});
+    });
+    return shuffle(pages).slice(0,6);
+  }
+  if(kind==='order'){
+    orderPool().forEach(function(it){
+      pages.push({kind:'order',key:it.key,title:it.title,sub:it.sub==='Memory items in order'?'Type the memory items in order. Key words are enough.':'Type the first steps in order. Key words are enough.',fields:it.steps.map(function(st,i){return {label:it.labels[i],ans:st};}),mode:'fields'});
+    });
+    return shuffle(pages).slice(0,5);
+  }
+  if(kind==='list'){
+    listPool().forEach(function(it){pages.push({kind:'list',key:it.key,title:it.title,sub:'Type every item you remember, separated by commas or new lines. Order does not matter.',items:it.items,mode:'list'});});
+    return shuffle(pages).slice(0,6);
+  }
+  if(kind==='num'){
+    var q=shuffle(numTypedPool()).slice(0,18);
+    for(var i=0;i<q.length;i+=6){
+      var ch=q.slice(i,i+6);if(ch.length<3)break;
+      pages.push({kind:'num',title:'Numbers and limits',sub:'Type the number. The unit is optional.',fields:ch.map(function(x){return {label:'',prompt:plain(x.c.front),ans:x.m.s,num:parseFloat(x.m.n.replace(/,/g,'')),key:x.c.key,why:plain(x.c.back)};}),mode:'fields',numeric:true});
+    }
+  }
+  return pages;
+}
+function startRc(kind,hard){
+  var pages=rcPages(kind,hard);
+  if(!pages.length){toast(kind==='mnem'?'No mnemonics in the selected decks.':kind==='list'?'No list-style cards in this selection.':kind==='num'?'Not enough number cards in this selection.':'No cards with numbered steps in this selection.');return;}
+  game={type:'rc',kind:kind,hard:!!hard,phase:'play',pages:pages,i:0,checked:false,res:[],cur:null,timer:null,to:null};
+  view='games';render();
+}
+function rcTotal(pg){return pg.mode==='list'?pg.items.length:pg.fields.length;}
+function rcRight(g){return g.cur?g.cur.ok.filter(Boolean).length:0;}
+function rcCheck(){
+  var g=game;if(!g||g.type!=='rc'||g.checked)return;
+  var pg=g.pages[g.i],ok=[],vals=[],extra=[];
+  if(pg.mode==='list'){
+    var txt=($('rc_list')||{}).value||'';vals=[txt];
+    var us=protNum(txt).split(/[\n,;]+/).map(function(x){return unprotNum(x).trim();}).filter(Boolean),used={};
+    pg.items.forEach(function(it){
+      var hit=-1;for(var i=0;i<us.length;i++){if(!used[i]&&rmatch(us[i],it)){hit=i;break;}}
+      if(hit>-1)used[hit]=1;ok.push(hit>-1);
+    });
+    us.forEach(function(u,i){if(!used[i])extra.push(u);});
+  }else{
+    var ins=document.querySelectorAll('.rcin');
+    pg.fields.forEach(function(f,i){
+      var v=ins[i]?ins[i].value:'';vals.push(v);
+      if(pg.numeric){var m=/-?\d[\d,]*\.?\d*/.exec(v),n=m?parseFloat(m[0].replace(/,/g,'')):NaN;f.got=n;ok.push(!isNaN(n)&&Math.abs(n-f.num)<1e-9);}
+      else if(f.acr)ok.push(rnorm(v).replace(/ /g,'')===rnorm(f.ans).replace(/ /g,'')||lev(rnorm(v).replace(/ /g,''),rnorm(f.ans).replace(/ /g,''))<=(f.ans.length>5?1:0)&&!!rnorm(v));
+      else ok.push(rmatch(v,f.ans));
+    });
+  }
+  g.cur={ok:ok,vals:vals,extra:extra};g.checked=true;paintRc();
+}
+function rcOverride(i){var g=game;if(!g||!g.checked)return;g.cur.ok[i]=true;paintRc();}
+function rcNext(){
+  var g=game;if(!g||!g.checked)return;
+  var pg=g.pages[g.i],right=rcRight(g),total=rcTotal(pg);
+  g.res.push({t:pg.title.length>70?pg.title.slice(0,67)+'...':pg.title,r:right,n:total});
+  if(pg.mode==='fields'&&pg.numeric){pg.fields.forEach(function(f,i){var c=f.key&&getCard(f.key);if(c)gameMark(c,!g.cur.ok[i]);});}
+  else if(pg.key){var c2=getCard(pg.key);if(c2)gameMark(c2,right<total);}
+  else{var t=today();S.history[t]=(S.history[t]||0)+1;}
+  save();
+  g.i++;g.checked=false;g.cur=null;
+  if(g.i>=g.pages.length){g.phase='end';var b=bestOf('rc:'+g.kind);var tot=0,rt=0;g.res.forEach(function(r){tot+=r.n;rt+=r.r;});setBest('rc:'+g.kind,{plays:(b.plays||0)+1,best:Math.max(b.best||0,Math.round(100*rt/Math.max(1,tot)))});save();}
+  render();
+}
+function paintRc(){
+  var g=game,names={mnem:'Mnemonic recall',order:'Steps from memory',list:'List recall',num:'Number recall'};
+  if(g.phase==='end'){
+    var tot=0,rt=0;g.res.forEach(function(r){tot+=r.n;rt+=r.r;});
+    var h='<h1>Round complete</h1><div class="grid"><div class="stat"><b>'+rt+'<small> / '+tot+'</small></b><span>recalled</span></div><div class="stat"><b>'+Math.round(100*rt/Math.max(1,tot))+'%</b><span>this round</span></div></div><div class="card list" style="margin-top:14px">';
+    g.res.forEach(function(r){h+='<div class="item"><div class="main"><div class="t">'+esc(r.t)+'</div></div><span class="chip'+(r.r===r.n?' ok':'')+'">'+r.r+' / '+r.n+'</span></div>';});
+    h+='</div><p class="legend">Cards you did not fully recall are back in your review schedule and on your missed-in-games list.</p><div class="row" style="margin-top:18px"><button class="btn" data-act="g_rc'+g.kind+(g.hard?'hard':'')+'">Play again</button><button class="btn ghost" data-act="g_menu">Back to games</button></div>';
+    mainEl.innerHTML=h;return;
+  }
+  var pg=g.pages[g.i],c=g.cur;
+  var h2='<div class="study"><div class="gtop"><span>'+names[g.kind]+'</span><span class="gs">'+(g.i+1)+' / '+g.pages.length+'</span>'+(c?'<span class="gs">Recalled <b>'+rcRight(g)+' / '+rcTotal(pg)+'</b></span>':'')+'</div>';
+  if(pg.mode==='fields'&&pg.numeric){
+    h2+='<div class="card gq"><div class="cx">'+esc(pg.sub)+'</div></div>';
+    pg.fields.forEach(function(f,i){
+      var st=c?(c.ok[i]?' filled':' bad'):'';
+      h2+='<div class="card panel" style="margin-top:10px"><div style="font-weight:600;margin-bottom:8px">'+esc(f.prompt)+'</div><div class="slot'+st+'"><input type="text" class="rcin" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-i="'+i+'" placeholder="Number" value="'+esc(c?c.vals[i]:'')+'"'+(c?' readonly':'')+' style="max-width:160px">'+
+        (c?'<span>'+(c.ok[i]?'Right: ':'Answer: ')+'<b>'+esc(f.ans)+'</b>'+(!c.ok[i]&&!isNaN(f.got)&&f.num?' <small style="color:var(--muted)">(you were '+Math.round(100*Math.abs(f.got-f.num)/f.num)+'% off)</small>':'')+'</span>'+(c.ok[i]?'':'<button class="link" data-act="rc_ovr" data-i="'+i+'">Count it right</button>'):'')+'</div></div>';
+    });
+  }else if(pg.mode==='fields'){
+    h2+='<div class="card gq"><div class="cx">'+esc(pg.sub)+'</div><div class="front">'+esc(pg.title)+'</div></div><div class="slots">';
+    pg.fields.forEach(function(f,i){
+      var st=c?(c.ok[i]?' filled':' bad'):'';
+      h2+='<div class="slot'+st+'" style="flex-wrap:wrap"><b>'+esc(f.label)+'</b><input type="text" class="rcin" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-i="'+i+'" value="'+esc(c?c.vals[i]:'')+'"'+(c?' readonly':'')+' style="flex:1;min-width:150px">'+
+        (c?'<span style="flex-basis:100%;font-size:14px">'+(c.ok[i]?'Right: ':'Answer: ')+'<b>'+esc(f.ans)+'</b>'+(f.det?' <small style="color:var(--muted)">'+esc(f.det)+'</small>':'')+(c.ok[i]?'':' <button class="link" data-act="rc_ovr" data-i="'+i+'">Count it right</button>')+'</span>':'')+'</div>';
+    });
+    h2+='</div>';
+  }else{
+    h2+='<div class="card gq"><div class="cx">'+esc(pg.sub)+'</div><div class="front">'+esc(pg.title)+'</div></div>';
+    h2+='<textarea id="rc_list" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="One item per line, or separated by commas"'+(c?' readonly':'')+' style="min-height:130px;margin-top:10px">'+esc(c?c.vals[0]:'')+'</textarea>';
+    if(c){
+      h2+='<div class="card list" style="margin-top:12px">';
+      pg.items.forEach(function(it,i){h2+='<div class="item"><div class="main"><div class="t">'+esc(it)+'</div></div>'+(c.ok[i]?'<span class="chip ok">Got it</span>':'<button class="link" data-act="rc_ovr" data-i="'+i+'">Missed. Count it right</button>')+'</div>';});
+      h2+='</div>';
+      if(c.extra.length)h2+='<p class="legend">Not on the list: '+c.extra.map(esc).join(', ')+'. If one of these is another way of saying an item you missed, use Count it right.</p>';
+    }
+  }
+  if(c&&pg.note)h2+='<p class="legend">'+esc(pg.note)+'</p>';
+  if(c&&pg.verify)h2+='<p class="legend">This one is not from a checked source. Versions vary, so confirm it with your instructor.</p>';
+  h2+='<div class="row" style="margin-top:14px">'+(c?'<button class="btn" data-act="rc_next">'+(g.i+1>=g.pages.length?'Finish':'Next')+'</button>':'<button class="btn" data-act="rc_check">Check answers</button>')+'<button class="btn ghost" data-act="g_menu">Quit</button></div>';
+  if(!c)h2+='<div class="hint">Answer everything first. Nothing is checked until you tap Check answers. Spelling does not need to be perfect.</div>';
+  mainEl.innerHTML=h2+'</div>';
+  if(!c){var f0=document.querySelector('.rcin')||$('rc_list');if(f0)f0.focus();}
+}
+document.addEventListener('keydown',function(e){
+  if(!game||game.type!=='rc'||e.key!=='Enter'||!e.target||!e.target.classList||!e.target.classList.contains('rcin'))return;
+  e.preventDefault();var all=Array.prototype.slice.call(document.querySelectorAll('.rcin')),i=all.indexOf(e.target);
+  if(i>-1&&i<all.length-1)all[i+1].focus();else rcCheck();
+});
 function normMnemonics(arr,fname){
   if(arr==null)return [];
   if(!Array.isArray(arr))throw new Error(fname+': "mnemonics" must be a list.');
@@ -1878,9 +2091,11 @@ function renderGames(){
     var czOk=clozeItems(Math.random,1).length>0,nmOk=numItems(Math.random,1).length>0,od=orderPool().length,mn=mnemList().length,wr=wxReports();
     h=h.replace('<div class="grid gmenu">','<div class="card gcard wide dcard"><h3>Daily challenge</h3><p>Five mixed questions that change every day. Finish one a day to build a streak.</p><div class="m">'+(dcDone?'Done today: '+S.dc.right+' of '+S.dc.n:'Not done yet')+' &middot; streak '+dcS+(S.dc.best?' &middot; best '+S.dc.best:'')+'</div><button class="btn" data-act="g_daily">'+(dcDone?'Review again':'Start')+'</button></div><div class="grid gmenu">');
     h+='<div class="card gcard"><h3>Fill the blank</h3><p>A sentence with a key word missing. Pick what belongs there. Uses fill-in-the-blank cards and bold key terms on your cards.</p><div class="m">'+(czOk?'Ready':'Needs fill-in cards or cards with bold terms')+'</div><button class="btn" data-act="g_cloze"'+(czOk?'':' disabled')+'>Play</button></div>';
-    h+='<div class="card gcard"><h3>Number sprint</h3><p>60 seconds on speeds, limits, distances and times. Pick the right number.</p><div class="m">'+(nmOk?'Ready':'Needs cards whose answer is one number with a unit')+(bestOf('mc:num').best?' &middot; best '+bestOf('mc:num').best:'')+'</div><button class="btn" data-act="g_num"'+(nmOk?'':' disabled')+'>Play</button></div>';
-    h+='<div class="card gcard"><h3>Order the steps</h3><p>Tap the steps of a procedure in the right order, such as emergency memory items.</p><div class="m">'+od+' procedure'+(od===1?'':'s')+' found</div><button class="btn" data-act="g_order"'+(od?'':' disabled')+'>Play</button></div>';
-    h+='<div class="card gcard"><h3>Mnemonic builder</h3><p>Rebuild what each letter stands for, such as IMSAFE, PAVE and ARROW.</p><div class="m">'+mn+' mnemonic'+(mn===1?'':'s')+' in these decks</div><button class="btn" data-act="g_mnem"'+(mn?'':' disabled')+'>Play</button></div>';
+    h+='<div class="card gcard"><h3>Number sprint</h3><p>60 seconds on speeds, limits, distances and times. Pick the right number.</p><div class="m">'+(nmOk?'Ready':'Needs cards whose answer is one number with a unit')+(bestOf('mc:num').best?' &middot; best '+bestOf('mc:num').best:'')+'</div><button class="btn" data-act="g_num"'+(nmOk?'':' disabled')+'>Play</button>'+(nmOk?'<button class="btn ghost" data-act="g_rcnum">Type the number</button>':'')+'</div>';
+    h+='<div class="card gcard"><h3>Order the steps</h3><p>Tap the steps of a procedure in the right order, or type them from memory, such as emergency memory items.</p><div class="m">'+od+' procedure'+(od===1?'':'s')+' found</div><button class="btn" data-act="g_order"'+(od?'':' disabled')+'>Tap to order</button>'+(od?'<button class="btn" data-act="g_rcorder">Type from memory</button>':'')+'</div>';
+    h+='<div class="card gcard"><h3>Mnemonic builder</h3><p>Type what each letter stands for, such as IMSAFE, PAVE and ARROW. Everything is checked at once when you finish. Hard mode also asks for the acronym.</p><div class="m">'+mn+' mnemonic'+(mn===1?'':'s')+' in these decks</div><div class="row"><button class="btn" data-act="g_rcmnem"'+(mn?'':' disabled')+'>Type it</button><button class="btn ghost" data-act="g_rcmnemhard"'+(mn?'':' disabled')+'>Hard</button><button class="btn ghost" data-act="g_mnem"'+(mn?'':' disabled')+'>Tap it</button></div></div>';
+    var lsn=listPool().length;
+    h+='<div class="card gcard"><h3>List recall</h3><p>Type every item of a list from memory, such as documents on board or hazardous attitudes. Order does not matter.</p><div class="m">'+lsn+' list'+(lsn===1?'':'s')+' found</div><button class="btn" data-act="g_rclist"'+(lsn?'':' disabled')+'>Play</button></div>';
     h+='<div class="card gcard wide"><h3>Weather decode</h3><p>Read a METAR and answer: wind, crosswind, flight category, ceiling, visibility, spread and more.</p><div class="m">'+(wr.real?wr.list.length+' real reports saved':'Using sample reports. Add real ones to keep it fresh.')+'</div><div class="row"><button class="btn" data-act="g_wx">Play</button><button class="btn ghost" data-act="wx_open">Add real METARs</button></div></div>';
     h+='<div class="card gcard wide"><h3>Scenario flight</h3><p>Work through a situation one decision at a time and see why each choice is better or worse.</p><div class="m">'+sc.length+' scenario'+(sc.length===1?'':'s')+' in these decks</div>';
     if(sc.length){h+='<div class="scl">';sc.forEach(function(x,i){h+='<button class="btn ghost small" data-act="g_scen" data-i="'+i+'">'+esc(x.s.title)+(bestOf('s:'+x.s.id).best!=null?' &middot; best '+bestOf('s:'+x.s.id).best+'/'+x.s.steps.length:'')+'</button>';});h+='</div>';}
@@ -1894,6 +2109,7 @@ function renderGames(){
   if(game.type==='scen')return paintScen();
   if(game.type==='mc')return paintMc();
   if(game.type==='seq')return paintSeq();
+  if(game.type==='rc')return paintRc();
 }
 
 /* speed round */
@@ -2397,6 +2613,14 @@ document.addEventListener('click',function(e){
     case 'g_mix':startMix();break;
     case 'g_order':startSeq('order');break;
     case 'g_mnem':startSeq('mnem');break;
+    case 'g_rcmnem':startRc('mnem',false);break;
+    case 'g_rcmnemhard':startRc('mnem',true);break;
+    case 'g_rcorder':startRc('order',false);break;
+    case 'g_rclist':startRc('list',false);break;
+    case 'g_rcnum':startRc('num',false);break;
+    case 'rc_check':rcCheck();break;
+    case 'rc_next':rcNext();break;
+    case 'rc_ovr':rcOverride(parseInt(el.getAttribute('data-i'),10));break;
     case 'mc_ans':mcAnswer(parseInt(el.getAttribute('data-i'),10));break;
     case 'mc_next':mcNext();break;
     case 'seq_pick':seqPick(parseInt(el.getAttribute('data-i'),10));break;
