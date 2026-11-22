@@ -1650,7 +1650,9 @@ function rmatch(user,ans){
     var nv=rnorm(vs[i]);if(!nv)continue;
     if(nu===nv||fu===rflat(vs[i]))return true;
     var tv=nv.split(' ').filter(function(w){return w&&!STOPW[w]&&(w.length>1||/\d/.test(w));}),tu=nu.split(' ').filter(function(w){return w&&!STOPW[w];});
-    if(!tv.length||!tu.length)continue;
+    if(!tv.length)continue;
+    if(!tv.some(function(w){return /\d/.test(w)||IVW[w];}))tu=tu.filter(function(w){return !/\d/.test(w)&&!IVW[w];});
+    if(!tu.length)continue;
     var hit=0,first=false,miss=0;
     tu.forEach(function(u){if(tv.some(function(w){return rtok(u,w);}))hit++;else miss++;});
     var cov=0;tv.forEach(function(w,k){if(tu.some(function(u){return rtok(u,w);})){cov++;if(k===0&&w.length>=3&&!/\d/.test(w))first=true;}});
@@ -1658,6 +1660,33 @@ function rmatch(user,ans){
     if(miss===0&&(c>=0.5||first))return true;
     if(c>=0.67&&miss<=1&&tv.length>=3)return true;
   }
+  return false;
+}
+var IVU='calendar months?|months?|mos?|days?|years?|yrs?|hours?|hrs?|minutes?|mins?|seconds?';
+var IVW={month:1,months:1,mo:1,mos:1,day:1,days:1,year:1,years:1,yr:1,yrs:1,hour:1,hours:1,hr:1,hrs:1,minute:1,minutes:1,min:1,mins:1,calendar:1};
+function ivFam(u){u=String(u||'').toLowerCase().replace(/^calendar\s+/,'');if(/^(months?|mos?)$/.test(u))return 'mo';if(/^days?$/.test(u))return 'day';if(/^(hours?|hrs?|h)$/.test(u))return 'hr';if(/^(years?|yrs?)$/.test(u))return 'yr';if(/^(minutes?|mins?)$/.test(u))return 'min';if(/^(seconds?|secs?)$/.test(u))return 'sec';return '';}
+function ivFind(t,bare,noName){
+  t=protNum(plain(t));
+  var f=/\d+(?:\.\d+)?/.exec(t);if(!f)return null;
+  var re=new RegExp('(\\d+(?:\\.\\d+)?)[\\s-]?('+IVU+')(?![A-Za-z])','i'),m=re.exec(t),txt,n,fam,name;
+  if(m&&m[1]===f[0]&&m.index===f.index){n=parseFloat(m[1]);fam=ivFam(m[2]);txt=m[1]+' '+m[2];name=(t.slice(0,m.index)+' '+t.slice(m.index+m[0].length));}
+  else if(bare){var b=/^(.*?)\s+(\d+)\s*$/.exec(t);if(!b)return null;n=parseFloat(b[2]);fam='';txt=b[2];name=b[1];}
+  else return null;
+  name=unprotNum(name).replace(/[()]/g,' ').replace(/\s+/g,' ').replace(/^[\s,;:-]+|[\s,;:-]+$/g,'');
+  if(!noName&&(!/[a-z]{3,}/i.test(name)||/^(within|every|each|at|after|before|for|per|if)\b/i.test(name)))return null;
+  return {name:name,txt:txt,n:n,fam:fam};
+}
+function ivEq(v,iv){
+  v=String(v||'').replace(/,/g,'').replace(/calendar\s+/i,'');
+  var m=/(\d+(?:\.\d+)?)\s*([a-z]*)/i.exec(v),n,f;
+  if(m){n=parseFloat(m[1]);f=ivFam(m[2]);}
+  else if(/annual|yearly|every year/i.test(v)){n=1;f='yr';}
+  else return false;
+  if(!iv.fam)return n===iv.n;
+  if(!f)return false;
+  if(f===iv.fam)return n===iv.n;
+  if(f==='yr'&&iv.fam==='mo')return n*12===iv.n;
+  if(f==='mo'&&iv.fam==='yr')return n===iv.n*12;
   return false;
 }
 function protNum(t){return t.replace(/(\d),(?=\d{3}(?!\d))/g,'$1\u0001');}
@@ -1710,25 +1739,29 @@ function rcPages(kind,hard){
       if(hard)f.unshift({label:'Acronym',ans:m.acr,acr:true});
       var ttl=m.title,i=ttl.indexOf(':');
       var head=hard?(i>0?ttl.slice(i+1).trim():ttl.replace(m.acr,'?????')):ttl+(m.acr?'  ('+m.acr+')':'');
-      pages.push({kind:'mnem',title:head,sub:hard?'Type the acronym, then what each letter stands for':'Type what each letter stands for',fields:f,note:m.note,verify:m.verify,mode:'fields'});
+      var ivs=[];m.steps.forEach(function(w,k){var iv=ivFind(m.det[k]||'',false,true);if(iv)ivs.push({name:w,ans:iv.txt,n:iv.n,fam:iv.fam});});
+      pages.push({kind:'mnem',title:head,sub:hard?'Type the acronym, then the items. Any order is fine for the items.':'Type every item. Any order is fine.',fields:f,note:m.note,verify:m.verify,mode:'fields',loose:true,ivs:ivs});
     });
     return shuffle(pages).slice(0,6);
   }
   if(kind==='order'){
     orderPool().forEach(function(it){
-      pages.push({kind:'order',key:it.key,title:it.title,sub:it.sub==='Memory items in order'?'Type the memory items in order. Key words are enough.':'Type the first steps in order. Key words are enough.',fields:it.steps.map(function(st,i){return {label:it.labels[i],ans:st};}),mode:'fields'});
+      pages.push({kind:'order',key:it.key,title:it.title,sub:it.sub==='Memory items in order'?'Type the memory items in order. Key words are enough.':'Type the first steps in order. Key words are enough.',fields:it.steps.map(function(st,i){return {label:it.labels[i],ans:st};}),mode:'fields',hint:true,ivs:[]});
     });
     return shuffle(pages).slice(0,5);
   }
   if(kind==='list'){
-    listPool().forEach(function(it){pages.push({kind:'list',key:it.key,title:it.title,sub:'Type every item you remember, separated by commas or new lines. Order does not matter.',items:it.items,mode:'list'});});
+    listPool().forEach(function(it){
+      var bare=/inspect|interval|how often|maintenance|aviate|expire|records?\b/i.test(it.title),names=[],ivs=[];
+      it.items.forEach(function(x){var iv=ivFind(x,bare);if(iv){names.push(iv.name);ivs.push({name:iv.name,ans:iv.txt,n:iv.n,fam:iv.fam});}else names.push(x);});
+      pages.push({kind:'list',key:it.key,title:it.title,sub:'Type every item you remember, separated by commas or new lines. Order does not matter.',items:names,mode:'list',ivs:ivs});});
     return shuffle(pages).slice(0,6);
   }
   if(kind==='num'){
     var q=shuffle(numTypedPool()).slice(0,18);
     for(var i=0;i<q.length;i+=6){
       var ch=q.slice(i,i+6);if(ch.length<3)break;
-      pages.push({kind:'num',title:'Numbers and limits',sub:'Type the number. The unit is optional.',fields:ch.map(function(x){return {label:'',prompt:plain(x.c.front),ans:x.m.s,num:parseFloat(x.m.n.replace(/,/g,'')),key:x.c.key,why:plain(x.c.back)};}),mode:'fields',numeric:true});
+      pages.push({kind:'num',title:'Numbers and limits',sub:'Type the number. For times and intervals, add the unit too (months, days, hours).',ivs:[],fields:ch.map(function(x){return {label:'',prompt:plain(x.c.front),ans:x.m.s,num:parseFloat(x.m.n.replace(/,/g,'')),fam:ivFam(x.m.u),key:x.c.key,why:plain(x.c.back)};}),mode:'fields',numeric:true});
     }
   }
   return pages;
@@ -1739,11 +1772,18 @@ function startRc(kind,hard){
   game={type:'rc',kind:kind,hard:!!hard,phase:'play',pages:pages,i:0,checked:false,res:[],cur:null,timer:null,to:null};
   view='games';render();
 }
-function rcTotal(pg){return pg.mode==='list'?pg.items.length:pg.fields.length;}
-function rcRight(g){return g.cur?g.cur.ok.filter(Boolean).length:0;}
+function rcTotal(pg){var n=pg.mode==='list'?pg.items.length:pg.fields.length;return n+(game&&game.iv&&game.iv.done&&pg.ivs?pg.ivs.length:0);}
+function rcRight(g){return (g.cur?g.cur.ok.filter(Boolean).length:0)+(g.iv&&g.iv.done?g.iv.ok.filter(Boolean).length:0);}
+function rcIvCheck(){
+  var g=game;if(!g||g.type!=='rc'||!g.checked||(g.iv&&g.iv.done))return;
+  var pg=g.pages[g.i],ins=document.querySelectorAll('.rciv'),vals=[],ok=[];
+  pg.ivs.forEach(function(iv,i){var v=ins[i]?ins[i].value:'';vals.push(v);ok.push(ivEq(v,iv));});
+  g.iv={vals:vals,ok:ok,done:true};paintRc();
+}
+function rcIvOverride(i){var g=game;if(!g||!g.iv||!g.iv.done)return;g.iv.ok[i]=true;paintRc();}
 function rcCheck(){
   var g=game;if(!g||g.type!=='rc'||g.checked)return;
-  var pg=g.pages[g.i],ok=[],vals=[],extra=[];
+  var pg=g.pages[g.i],ok=[],vals=[],extra=[],moved={},movedTo={};
   if(pg.mode==='list'){
     var txt=($('rc_list')||{}).value||'';vals=[txt];
     var us=protNum(txt).split(/[\n,;]+/).map(function(x){return unprotNum(x).trim();}).filter(Boolean),used={};
@@ -1756,12 +1796,22 @@ function rcCheck(){
     var ins=document.querySelectorAll('.rcin');
     pg.fields.forEach(function(f,i){
       var v=ins[i]?ins[i].value:'';vals.push(v);
-      if(pg.numeric){var m=/-?\d[\d,]*\.?\d*/.exec(v),n=m?parseFloat(m[0].replace(/,/g,'')):NaN;f.got=n;ok.push(!isNaN(n)&&Math.abs(n-f.num)<1e-9);}
+      if(pg.numeric){var m=/-?\d[\d,]*\.?\d*/.exec(v),n=m?parseFloat(m[0].replace(/,/g,'')):NaN;f.got=n;ok.push(f.fam?ivEq(v,{n:f.num,fam:f.fam}):(!isNaN(n)&&Math.abs(n-f.num)<1e-9));}
       else if(f.acr)ok.push(rnorm(v).replace(/ /g,'')===rnorm(f.ans).replace(/ /g,'')||lev(rnorm(v).replace(/ /g,''),rnorm(f.ans).replace(/ /g,''))<=(f.ans.length>5?1:0)&&!!rnorm(v));
       else ok.push(rmatch(v,f.ans));
     });
+    if((pg.loose||pg.hint)&&!pg.numeric){
+      var claimed={};ok.forEach(function(o,i){if(o)claimed[i]=1;});
+      pg.fields.forEach(function(f,i){
+        if(ok[i]||f.acr||!rnorm(vals[i]))return;
+        for(var j=0;j<pg.fields.length;j++){
+          var fj=pg.fields[j];if(j===i||claimed[j]||fj.acr)continue;
+          if(rmatch(vals[i],fj.ans)){claimed[j]=1;moved[i]=j;movedTo[j]=i;if(pg.loose)ok[i]=true;return;}
+        }
+      });
+    }
   }
-  g.cur={ok:ok,vals:vals,extra:extra};g.checked=true;paintRc();
+  g.cur={ok:ok,vals:vals,extra:extra,moved:moved,movedTo:movedTo};g.checked=true;g.iv=null;paintRc();
 }
 function rcOverride(i){var g=game;if(!g||!g.checked)return;g.cur.ok[i]=true;paintRc();}
 function rcNext(){
@@ -1772,9 +1822,29 @@ function rcNext(){
   else if(pg.key){var c2=getCard(pg.key);if(c2)gameMark(c2,right<total);}
   else{var t=today();S.history[t]=(S.history[t]||0)+1;}
   save();
-  g.i++;g.checked=false;g.cur=null;
+  g.i++;g.checked=false;g.cur=null;g.iv=null;
   if(g.i>=g.pages.length){g.phase='end';var b=bestOf('rc:'+g.kind);var tot=0,rt=0;g.res.forEach(function(r){tot+=r.n;rt+=r.r;});setBest('rc:'+g.kind,{plays:(b.plays||0)+1,best:Math.max(b.best||0,Math.round(100*rt/Math.max(1,tot)))});save();}
   render();
+}
+function rcSlotMsg(pg,c,f,i){
+  var L=function(j){return pg.fields[j].label;},A=function(j){return pg.fields[j].ans;},det=f.det?' <small style="color:var(--muted)">'+esc(f.det)+'</small>':'';
+  var ovr=' <button class="link" data-act="rc_ovr" data-i="'+i+'">Count it right</button>';
+  if(c.moved&&c.moved[i]!==undefined){
+    var j=c.moved[i];
+    if(pg.loose)return 'Right item, different spot: <b>'+esc(A(j))+'</b> belongs with <b>'+esc(L(j))+'</b>.';
+    return 'That is a real step, but out of order: <b>'+esc(A(j))+'</b> is step <b>'+esc(L(j))+'</b>. This spot is <b>'+esc(f.ans)+'</b>.'+ovr;
+  }
+  if(!c.ok[i]&&c.movedTo&&c.movedTo[i]!==undefined&&pg.loose)return 'You listed <b>'+esc(f.ans)+'</b> under '+esc(L(c.movedTo[i]))+'. Good.'+det;
+  return (c.ok[i]?'Right: ':'Answer: ')+'<b>'+esc(f.ans)+'</b>'+det+(c.ok[i]?'':ovr);
+}
+function rcIvHtml(pg,g){
+  var d=g.iv,h='<div class="card gq" style="margin-top:16px"><div class="cx">Verify the intervals</div><div class="front" style="font-size:17px">How often, or how long, for each? Include the unit (months, days, hours).</div></div><div class="slots">';
+  pg.ivs.forEach(function(iv,i){
+    var st=d?(d.ok[i]?' filled':' bad'):'';
+    h+='<div class="slot'+st+'" style="flex-wrap:wrap"><b style="min-width:0">'+esc(iv.name)+'</b><input type="text" class="rciv" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-i="'+i+'" placeholder="'+(iv.fam?'e.g. 12 months':'Number')+'" value="'+esc(d?d.vals[i]:'')+'"'+(d?' readonly':'')+' style="flex:1;min-width:150px">'+
+      (d?'<span style="flex-basis:100%;font-size:14px">'+(d.ok[i]?'Right: ':'Answer: ')+'<b>'+esc(iv.ans)+'</b>'+(d.ok[i]?'':' <button class="link" data-act="rc_ivovr" data-i="'+i+'">Count it right</button>')+'</span>':'')+'</div>';
+  });
+  return h+'</div>';
 }
 function paintRc(){
   var g=game,names={mnem:'Mnemonic recall',order:'Steps from memory',list:'List recall',num:'Number recall'};
@@ -1791,15 +1861,15 @@ function paintRc(){
     h2+='<div class="card gq"><div class="cx">'+esc(pg.sub)+'</div></div>';
     pg.fields.forEach(function(f,i){
       var st=c?(c.ok[i]?' filled':' bad'):'';
-      h2+='<div class="card panel" style="margin-top:10px"><div style="font-weight:600;margin-bottom:8px">'+esc(f.prompt)+'</div><div class="slot'+st+'"><input type="text" class="rcin" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-i="'+i+'" placeholder="Number" value="'+esc(c?c.vals[i]:'')+'"'+(c?' readonly':'')+' style="max-width:160px">'+
+      h2+='<div class="card panel" style="margin-top:10px"><div style="font-weight:600;margin-bottom:8px">'+esc(f.prompt)+'</div><div class="slot'+st+'"><input type="text" class="rcin" inputmode="decimal" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-i="'+i+'" placeholder="'+(f.fam?'Number and unit':'Number')+'" value="'+esc(c?c.vals[i]:'')+'"'+(c?' readonly':'')+' style="max-width:160px">'+
         (c?'<span>'+(c.ok[i]?'Right: ':'Answer: ')+'<b>'+esc(f.ans)+'</b>'+(!c.ok[i]&&!isNaN(f.got)&&f.num?' <small style="color:var(--muted)">(you were '+Math.round(100*Math.abs(f.got-f.num)/f.num)+'% off)</small>':'')+'</span>'+(c.ok[i]?'':'<button class="link" data-act="rc_ovr" data-i="'+i+'">Count it right</button>'):'')+'</div></div>';
     });
   }else if(pg.mode==='fields'){
     h2+='<div class="card gq"><div class="cx">'+esc(pg.sub)+'</div><div class="front">'+esc(pg.title)+'</div></div><div class="slots">';
     pg.fields.forEach(function(f,i){
-      var st=c?(c.ok[i]?' filled':' bad'):'';
+      var st=c?(c.ok[i]?' filled':(c.movedTo&&c.movedTo[i]!==undefined&&pg.loose?'':' bad')):'';
       h2+='<div class="slot'+st+'" style="flex-wrap:wrap"><b>'+esc(f.label)+'</b><input type="text" class="rcin" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-i="'+i+'" value="'+esc(c?c.vals[i]:'')+'"'+(c?' readonly':'')+' style="flex:1;min-width:150px">'+
-        (c?'<span style="flex-basis:100%;font-size:14px">'+(c.ok[i]?'Right: ':'Answer: ')+'<b>'+esc(f.ans)+'</b>'+(f.det?' <small style="color:var(--muted)">'+esc(f.det)+'</small>':'')+(c.ok[i]?'':' <button class="link" data-act="rc_ovr" data-i="'+i+'">Count it right</button>')+'</span>':'')+'</div>';
+        (c?'<span style="flex-basis:100%;font-size:14px">'+rcSlotMsg(pg,c,f,i)+'</span>':'')+'</div>';
     });
     h2+='</div>';
   }else{
@@ -1812,17 +1882,21 @@ function paintRc(){
       if(c.extra.length)h2+='<p class="legend">Not on the list: '+c.extra.map(esc).join(', ')+'. If one of these is another way of saying an item you missed, use Count it right.</p>';
     }
   }
+  var ivPend=!!(c&&pg.ivs&&pg.ivs.length&&!(g.iv&&g.iv.done));
+  if(c&&pg.ivs&&pg.ivs.length)h2+=rcIvHtml(pg,g);
   if(c&&pg.note)h2+='<p class="legend">'+esc(pg.note)+'</p>';
   if(c&&pg.verify)h2+='<p class="legend">This one is not from a checked source. Versions vary, so confirm it with your instructor.</p>';
-  h2+='<div class="row" style="margin-top:14px">'+(c?'<button class="btn" data-act="rc_next">'+(g.i+1>=g.pages.length?'Finish':'Next')+'</button>':'<button class="btn" data-act="rc_check">Check answers</button>')+'<button class="btn ghost" data-act="g_menu">Quit</button></div>';
+  h2+='<div class="row" style="margin-top:14px">'+(c?(ivPend?'<button class="btn" data-act="rc_ivcheck">Check intervals</button>':'<button class="btn" data-act="rc_next">'+(g.i+1>=g.pages.length?'Finish':'Next')+'</button>'):'<button class="btn" data-act="rc_check">Check answers</button>')+'<button class="btn ghost" data-act="g_menu">Quit</button></div>';
   if(!c)h2+='<div class="hint">Answer everything first. Nothing is checked until you tap Check answers. Spelling does not need to be perfect.</div>';
   mainEl.innerHTML=h2+'</div>';
   if(!c){var f0=document.querySelector('.rcin')||$('rc_list');if(f0)f0.focus();}
+  else if(ivPend){var f1=document.querySelector('.rciv');if(f1)f1.focus();}
 }
 document.addEventListener('keydown',function(e){
-  if(!game||game.type!=='rc'||e.key!=='Enter'||!e.target||!e.target.classList||!e.target.classList.contains('rcin'))return;
-  e.preventDefault();var all=Array.prototype.slice.call(document.querySelectorAll('.rcin')),i=all.indexOf(e.target);
-  if(i>-1&&i<all.length-1)all[i+1].focus();else rcCheck();
+  if(!game||game.type!=='rc'||e.key!=='Enter'||!e.target||!e.target.classList)return;
+  var iv=e.target.classList.contains('rciv');if(!iv&&!e.target.classList.contains('rcin'))return;
+  e.preventDefault();var all=Array.prototype.slice.call(document.querySelectorAll(iv?'.rciv':'.rcin')),i=all.indexOf(e.target);
+  if(i>-1&&i<all.length-1)all[i+1].focus();else if(iv)rcIvCheck();else rcCheck();
 });
 function normMnemonics(arr,fname){
   if(arr==null)return [];
@@ -2620,6 +2694,8 @@ document.addEventListener('click',function(e){
     case 'g_rcnum':startRc('num',false);break;
     case 'rc_check':rcCheck();break;
     case 'rc_next':rcNext();break;
+    case 'rc_ivcheck':rcIvCheck();break;
+    case 'rc_ivovr':rcIvOverride(parseInt(el.getAttribute('data-i'),10));break;
     case 'rc_ovr':rcOverride(parseInt(el.getAttribute('data-i'),10));break;
     case 'mc_ans':mcAnswer(parseInt(el.getAttribute('data-i'),10));break;
     case 'mc_next':mcNext();break;
