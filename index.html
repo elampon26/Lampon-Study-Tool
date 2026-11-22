@@ -363,7 +363,7 @@ var KEY='checkride-study-v1',SNAPKEY='checkride-study-snap',UNDOKEY='checkride-s
 
 /* ---------- storage ---------- */
 var FLIGHT_RE=/pilot|flight|flying|aviation|checkride|aircraft|taefc/i;
-function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed',theme:'auto',wxStations:'KICT,KMCI,KSTL,KDEN,KORD,KATL,KSEA,KPHX,KBOS,KMIA'},daily:{date:'',newCount:0},history:{},cheat:{},mocks:[],dc:{date:'',streak:0,best:0,right:0,n:0},wx:null,lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
+function defaults(){return{v:VER,subjects:{},decks:{},progress:{},notes:{},overrides:{},flags:{},settings:{newPerDay:20,autoDownload:false,staleDays:180,mix:'mixed',theme:'auto',wxStations:'KICT,KMCI,KSTL,KDEN,KORD,KATL,KSEA,KPHX,KBOS,KMIA'},daily:{date:'',newCount:0},history:{},cheat:{},mocks:[],gmiss:{},dc:{date:'',streak:0,best:0,right:0,n:0},wx:null,lastBackup:0,lastAuto:0,currentSubject:'',sel:{},sets:{}};}
 function migrate(s){
   var base=defaults();for(var k in s)base[k]=s[k];
   var df=defaults().settings;if(!base.settings||typeof base.settings!=='object')base.settings={};
@@ -674,7 +674,7 @@ function renderHome(){
      '<button class="btn" data-act="start"'+(q.length?'':' disabled')+'>Start studying</button></div>';
   h+='<div class="sublinks"><button class="link" data-act="cram">Practice all (shuffled)</button>'+
      '<button class="link" data-act="weak"'+(weak?'':' disabled')+'>Weak cards ('+weak+')</button>'+
-     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button><button class="link" data-act="g_daily">Daily challenge'+(S.dc.date===today()?' (done)':'')+'</button><button class="link" data-act="drive">Drive mode</button></div>';
+     '<button class="link" data-act="needverify"'+(verify?'':' disabled')+'>Verify queue ('+verify+')</button>'+(isFlight()?'<button class="link" data-act="plan">Today\'s plan</button>':'')+(gmKeys().length?'<button class="link" data-act="gmstudy">Missed in games ('+gmKeys().length+')</button>':'')+'<button class="link" data-act="g_daily">Daily challenge'+(S.dc.date===today()?' (done)':'')+'</button><button class="link" data-act="drive">Drive mode</button></div>';
   h+='<div class="mini"><div class="stat"><b>'+seen+'<small> / '+cards.length+'</small></b><span>seen</span></div><div class="stat"><b>'+solid+'</b><span>solid</span></div><div class="stat"><b>'+streak()+'</b><span>day streak</span></div></div>';
   var bars='',max=1,vals=[];
   for(var i=13;i>=0;i--){var d=new Date(Date.now()-i*DAY),k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(),v=S.history[k]||0;vals.push(v);if(v>max)max=v;}
@@ -766,6 +766,7 @@ function rate(r){
     S.progress[key]=schedule(S.progress[key],r);
     if(!existed){if(S.daily.date!==today())S.daily={date:today(),newCount:0};S.daily.newCount++;}
   }
+  if(r>=3&&S.gmiss&&S.gmiss[key])delete S.gmiss[key];
   var t=today();S.history[t]=(S.history[t]||0)+1;save();
   if(r===1)s.queue.push(key);
   s.done++;s.idx++;s.revealed=false;render();
@@ -1107,18 +1108,19 @@ function mergeBackup(obj){
   return 'Combined: '+st.prog+' card'+(st.prog===1?'':'s')+' updated from the other device, '+st.notes+' note'+(st.notes===1?'':'s')+', '+st.decks+' new deck'+(st.decks===1?'':'s')+(st.cards?', '+st.cards+' of your cards':'')+'. Undo is in Settings.';
 }
 /* ---- Checkride tab ---- */
-var ck={tab:'oral'},mo=null,moOpt={n:10,focus:true,areas:null},xc=null,rdGroups=[];
+var ck={tab:'oral'},mo=null,moOpt={n:10,focus:true,areas:null,style:'examiner',voice:false,fuOnly:false},xc=null,rdGroups=[];
 function ckTabs(){
   var h='<div class="seg noprint">';
-  [['oral','Mock oral'],['ready','Readiness'],['xc','Cross-country'],['cheat','Cheat sheet']].forEach(function(t){h+='<button class="btn small'+(ck.tab===t[0]?'':' ghost')+'" data-act="cktab" data-t="'+t[0]+'">'+t[1]+'</button>';});
+  [['plan','Plan'],['oral','Mock oral'],['ready','Readiness'],['xc','Cross-country'],['cheat','Cheat sheet']].forEach(function(t){h+='<button class="btn small'+(ck.tab===t[0]?'':' ghost')+'" data-act="cktab" data-t="'+t[0]+'">'+t[1]+'</button>';});
   return h+'</div>';
 }
 function renderCheckride(){
   var h='<h1>Checkride prep</h1><p class="sub noprint">Tools for the oral and the cross-country planning questions. They use the cards in "'+esc(subj().name)+'".</p>'+ckTabs();
   mainEl.innerHTML=h+'<div id="ckbody"></div>';
   var b=$('ckbody');
-  if(ck.tab==='oral')b.innerHTML=moHtml();else if(ck.tab==='ready')b.innerHTML=readyHtml();else if(ck.tab==='xc')b.innerHTML=xcHtml();else b.innerHTML=cheatHtml();
+  if(ck.tab==='plan')b.innerHTML=planHtml();else if(ck.tab==='oral')b.innerHTML=moHtml();else if(ck.tab==='ready')b.innerHTML=readyHtml();else if(ck.tab==='xc')b.innerHTML=xcHtml();else b.innerHTML=cheatHtml();
   var xi=$('xc_in');if(xi)xi.focus();
+  moSpeak();
 }
 /* mock oral */
 function moHtml(){
@@ -1129,6 +1131,8 @@ function moHtml(){
     var sel=moOpt.areas||Object.keys(areas);
     var h='<div class="card" style="padding:18px"><p class="sub" style="margin-top:0">An examiner-style run: you get a question, say your answer out loud first, then reveal it and rate yourself honestly. The follow-ups show what an examiner may ask next.</p>'+
       '<label class="label" style="margin-top:0">Number of questions</label><select id="mo_n">'+[5,10,20,30].map(function(n){return '<option'+(moOpt.n===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>'+
+      '<label class="label">Style</label><label class="check"><input type="radio" name="mo_style" value="examiner"'+(moOpt.style==='examiner'?' checked':'')+'> Examiner: ask, follow up one question at a time, then reveal</label><label class="check"><input type="radio" name="mo_style" value="quick"'+(moOpt.style==='quick'?' checked':'')+'> Quick: question, reveal, rate</label>'+
+      '<label class="check"><input type="checkbox" id="mo_voice"'+(moOpt.voice?' checked':'')+'> Read the questions aloud</label><label class="check"><input type="checkbox" id="mo_fu"'+(moOpt.fuOnly?' checked':'')+'> Only cards that have follow-up questions</label>'+
       '<label class="check"><input type="checkbox" id="mo_focus"'+(moOpt.focus?' checked':'')+'> Lean toward weak, due and unseen cards</label>'+
       '<label class="label">Areas</label><div class="mo-areas">';
     Object.keys(areas).sort().forEach(function(a){h+='<label class="check"><input type="checkbox" class="mo_area" value="'+esc(a)+'"'+(sel.indexOf(a)>-1?' checked':'')+'> '+esc(a)+' <small>('+areas[a]+')</small></label>';});
@@ -1153,16 +1157,28 @@ function moHtml(){
       wk.forEach(function(k){var c=getCard(k);if(c)h2+='<div class="item"><div class="main"><div class="t">'+fmt(c.front)+'</div><div class="m">'+(mo.rate[k]===1?'Missed':'Shaky')+' &middot; '+esc(areaOf(c))+'</div></div></div>';});
       h2+='</div>';
     }
+    var stl=[];mo.queue.forEach(function(k){var c=getCard(k);(mo.stumble[k]||[]).forEach(function(i){if(c&&c.followups&&c.followups[i])stl.push({q:c.front,f:c.followups[i]});});});
+    if(stl.length){h2+='<h2>Follow-ups to brush up on</h2><div class="card list">';stl.forEach(function(x){h2+='<div class="item"><div class="main"><div class="t">'+fmt(x.f)+'</div><div class="m">From: '+plain(x.q)+'</div></div></div>';});h2+='</div>';}
     h2+='<div class="row" style="margin-top:14px">'+(wk.length&&!mo.sent?'<button class="btn" data-act="mosend">Add missed and shaky to my reviews</button>':'')+(wk.length?'<button class="btn ghost" data-act="mostudy">Study them now</button>':'')+'<button class="btn ghost" data-act="moagain">New mock oral</button></div></div>';
     return h2;
   }
   var k=mo.queue[mo.idx],c=getCard(k);
   var h3='<div class="card" style="padding:20px"><div class="meta"><span>'+esc(areaOf(c))+'</span><span>Question '+(mo.idx+1)+' of '+mo.queue.length+'</span></div>'+
     '<div class="front" style="font-size:1.25em;margin:14px 0">'+dispFront(c)+'</div>'+imgHtml(c);
+  if(mo.style==='examiner'&&!mo.revealed){
+    var fl=(c.followups||[]);
+    if(mo.step==='fu'&&fl[mo.fi]){
+      h3+='<div class="hd" style="margin-top:6px">The examiner follows up ('+(mo.fi+1)+' of '+fl.length+')</div><div class="front" style="font-size:1.15em;margin:8px 0 14px">'+fmt(fl[mo.fi])+'</div><p class="sub">Answer out loud, then continue.</p><div class="row"><button class="btn" data-act="mofu">'+(mo.fi+1<fl.length?'Next follow-up':'Done, show the answer')+'</button><button class="btn ghost" data-act="moend">End</button></div>';
+    }else h3+='<p class="sub">Answer out loud like you are sitting across from the examiner.'+(fl.length?' Follow-up questions come next.':'')+'</p><div class="row"><button class="btn" data-act="moans">'+(fl.length?'I have answered':'Reveal answer')+'</button>'+(moOpt.voice?'<button class="btn ghost" data-act="morepeat">Repeat question</button>':'')+'<button class="btn ghost" data-act="moend">End</button></div>';
+    return h3+'</div>';
+  }
   if(!mo.revealed)h3+='<p class="sub">Say your answer out loud, then reveal it.</p><div class="row"><button class="btn" data-act="morev">Reveal answer</button><button class="btn ghost" data-act="moend">End</button></div>';
   else{
     h3+='<div class="ans" style="padding:12px 14px;background:var(--accent-soft);border-radius:12px">'+dispBack(c)+'</div>';
-    if(c.followups&&c.followups.length)h3+='<div class="hd" style="margin-top:14px">An examiner may ask next</div><ul>'+c.followups.map(function(f){return '<li>'+fmt(f)+'</li>';}).join('')+'</ul>';
+    if(c.followups&&c.followups.length){
+      if(mo.style==='examiner')h3+='<div class="hd" style="margin-top:14px">Which follow-ups did you stumble on?</div>'+c.followups.map(function(f,i){return '<label class="check"><input type="checkbox" class="mo_st" data-i="'+i+'"> '+fmt(f)+'</label>';}).join('');
+      else h3+='<div class="hd" style="margin-top:14px">An examiner may ask next</div><ul>'+c.followups.map(function(f){return '<li>'+fmt(f)+'</li>';}).join('')+'</ul>';
+    }
     if(c.source||c.page)h3+='<div class="src" style="margin-top:8px">'+esc(c.source||'')+(c.source&&c.page?' &middot; ':'')+esc(c.page||'')+'</div>';
     h3+='<div class="rates" style="margin-top:16px"><button class="rate r1" data-act="morate" data-r="1">Missed it</button><button class="rate r2" data-act="morate" data-r="2">Shaky</button><button class="rate r3" data-act="morate" data-r="3">Solid</button></div>';
   }
@@ -1172,15 +1188,65 @@ function moStart(){
   var pool=allCards();
   var ar=Array.prototype.slice.call(document.querySelectorAll('.mo_area')).filter(function(x){return x.checked;}).map(function(x){return x.value;});
   moOpt.n=parseInt($('mo_n').value,10)||10;moOpt.focus=$('mo_focus').checked;moOpt.areas=ar;
-  pool=pool.filter(function(c){return ar.indexOf(areaOf(c))>-1;});
+  var ms=document.querySelector('input[name=mo_style]:checked');moOpt.style=ms?ms.value:'examiner';moOpt.voice=!!($('mo_voice')&&$('mo_voice').checked);moOpt.fuOnly=!!($('mo_fu')&&$('mo_fu').checked);
+  pool=pool.filter(function(c){return ar.indexOf(areaOf(c))>-1&&(!moOpt.fuOnly||(c.followups&&c.followups.length));});
   if(!pool.length){toast('Pick at least one area with cards.');return;}
   var now=Date.now();
   pool=pool.map(function(c){var p=S.progress[c.key],s=Math.random()*2;if(moOpt.focus){if(isWeak(c))s+=3;if(!p)s+=2;else if(p.due<=now)s+=1;}else s=Math.random();return{k:c.key,s:s};}).sort(function(a,b){return b.s-a.s;});
-  mo={queue:pool.slice(0,moOpt.n).map(function(x){return x.k;}),idx:0,revealed:false,rate:{},sent:false};
+  mo={queue:pool.slice(0,moOpt.n).map(function(x){return x.k;}),idx:0,revealed:false,rate:{},sent:false,style:moOpt.style,step:'ask',fi:0,stumble:{}};
 }
 function moFinish(){
   var s=0,sh=0,m=0;mo.queue.forEach(function(k){var r=mo.rate[k]||1;if(r===3)s++;else if(r===2)sh++;else m++;});
-  S.mocks.push({t:Date.now(),n:mo.queue.length,solid:s,shaky:sh,missed:m});S.mocks=S.mocks.slice(-20);save();
+  var stn=0;Object.keys(mo.stumble||{}).forEach(function(k){stn+=mo.stumble[k].length;});S.mocks.push({t:Date.now(),n:mo.queue.length,solid:s,shaky:sh,missed:m,style:mo.style||'quick',stumbled:stn});S.mocks=S.mocks.slice(-20);save();
+}
+
+function moSpeak(force){
+  if(!mo||mo.style!=='examiner'||!moOpt.voice||mo.revealed||mo.idx>=mo.queue.length)return;
+  var c=getCard(mo.queue[mo.idx]);if(!c)return;
+  var key=mo.queue[mo.idx]+'|'+mo.step+'|'+mo.fi;
+  if(!force&&mo.spoken===key)return;
+  mo.spoken=key;
+  var fl=c.followups||[];
+  speak(plain(mo.step==='fu'&&fl[mo.fi]?fl[mo.fi]:(c.type==='cloze'?clozeFront(c.front).replace(/<[^>]+>/g,' '):c.front)));
+}
+/* exam countdown and daily plan */
+function planData(){
+  var cards=allCards(),now=Date.now(),sb=subj();
+  var d={cards:cards,now:now,seen:0,solid:0,weak:0,verify:0,dueKeys:[],unseen:[],areas:{}};
+  cards.forEach(function(c){
+    var p=S.progress[c.key],a=areaOf(c),x=d.areas[a]||(d.areas[a]={n:0,seen:0,solid:0,keys:[],unseen:[]});
+    x.n++;x.keys.push(c.key);
+    if(p){d.seen++;x.seen++;if(p.interval>=3){d.solid++;x.solid++;}if(p.due<=now)d.dueKeys.push(c.key);}
+    else{d.unseen.push(c);x.unseen.push(c.key);}
+    if(isWeak(c))d.weak++;if(attn(c))d.verify++;
+  });
+  d.dl=sb.examDate?Math.ceil((new Date(sb.examDate+'T00:00:00')-new Date())/DAY):null;
+  return d;
+}
+function planHtml(){
+  var sb=subj(),cards=allCards();
+  if(!cards.length)return '<div class="card empty"><p>No cards in this subject yet.</p></div>';
+  var d=planData(),h='<div class="card" style="padding:16px"><label class="label" style="margin-top:0">Checkride date</label><input type="date" id="pl_date" value="'+esc(sb.examDate||'')+'" style="max-width:200px"></div>';
+  if(d.dl===null)return h+'<p class="sub" style="margin-top:14px">Pick your checkride date and this tab builds a plan for each day: what to review, how many new cards to learn, when to do a mock oral and what to verify before the exam.</p>';
+  if(d.dl<0)return h+'<p class="sub" style="margin-top:14px">That date has passed. Pick a new date to get a plan.</p>';
+  var phase=d.dl>21?['Build','Learn the material and keep reviews current.']:d.dl>7?['Reinforce','Finish the new cards, drill weak spots and practise the oral.']:d.dl>3?['Sharpen','Mock orals, weak cards and your verify list. Few new cards.']:['Final review','No new cards. Review, fix weak spots and rest.'];
+  var unseen=d.unseen.length,learnDays=Math.max(1,d.dl-3),pace=d.dl<=3?0:Math.ceil(unseen/learnDays);
+  var usedToday=(S.daily.date===today())?S.daily.newCount:0,newToday=Math.max(0,pace-usedToday);
+  var gm=gmKeys(),pct=cards.length?Math.round(100*d.solid/cards.length):0;
+  h+='<div class="card hero" style="margin-top:14px"><div><div class="big">'+(d.dl===0?'Today':d.dl)+'</div><div class="cap">'+(d.dl===0?'is checkride day':'day'+(d.dl===1?'':'s')+' to your checkride')+' &middot; '+esc(phase[0])+' phase</div></div><div style="max-width:320px;color:var(--muted);font-size:14px">'+esc(phase[1])+' '+pct+'% of your cards are solid; '+unseen+' not seen yet.</div></div>';
+  h+='<h2>Today</h2><div class="card list">';
+  function row(title,meta,done,btn){h+='<div class="item"><div class="main"><div class="t">'+title+'</div><div class="m">'+meta+'</div></div>'+(done?'<span class="chip ok">Done</span>':btn)+'</div>';}
+  row('Reviews due',d.dueKeys.length?d.dueKeys.length+' card'+(d.dueKeys.length===1?'':'s')+' scheduled for today or earlier':'Nothing due right now',!d.dueKeys.length,'<button class="btn small" data-act="plreview">Review</button>');
+  if(d.dl>3)row('New cards: '+newToday+' today',unseen?'About '+pace+' a day finishes all '+unseen+' unseen cards by 3 days before the exam. Weakest topics first.'+(pace>(S.settings.newPerDay|0)?' Your daily limit is '+(S.settings.newPerDay|0)+'; raise it in Settings to match.':''):'You have seen every card',!newToday||!unseen,'<button class="btn small" data-act="plnew" data-n="'+newToday+'">Learn</button>');
+  row('Missed in games',gm.length?gm.length+' card'+(gm.length===1?'':'s')+' you got wrong in a game':'No game misses',!gm.length,'<button class="btn small" data-act="gmstudy">Study</button>');
+  row('Weak cards',d.weak?d.weak+' card'+(d.weak===1?'':'s')+' you have lapsed on recently':'No weak cards',!d.weak,'<button class="btn small" data-act="weak">Study</button>');
+  if(d.verify&&d.dl<=30)row('Verify before the exam',d.verify+' card'+(d.verify===1?' is':'s are')+' flagged to check against the source',false,'<button class="btn small" data-act="needverify">Open</button>');
+  var last=S.mocks.length?S.mocks[S.mocks.length-1].t:0,since=last?Math.floor((d.now-last)/DAY):999,gap=d.dl>21?7:d.dl>7?4:2;
+  var names=Object.keys(d.areas).sort(function(a,b){var x=d.areas[a],y=d.areas[b];return (x.solid/x.n)-(y.solid/y.n);});
+  row('Mock oral',last?('Last one '+(since===0?'today':since+' day'+(since===1?'':'s')+' ago')+'. Every '+gap+' days is about right now.'):'You have not done one yet.'+' Suggested topics: '+esc(names.slice(0,2).join(' and ')),since<gap,'<button class="btn small" data-act="plmock">Start</button>');
+  h+='</div><h2>Weakest topics</h2><div class="card covcard">';
+  names.slice(0,5).forEach(function(a){var x=d.areas[a];h+='<div class="covrow" data-act="plarea" data-a="'+esc(a)+'"><div class="top"><b>'+esc(a)+'</b><span>'+x.solid+' solid &middot; '+x.seen+' seen &middot; '+x.n+'</span></div><div class="bar"><i class="seen" style="width:'+(100*x.seen/x.n)+'%"></i><i class="solid" style="width:'+(100*x.solid/x.n)+'%"></i></div></div>';});
+  return h+'</div><p class="legend">The plan reflects your own review history and the date you set. It is a study guide, not a measure of exam readiness.</p>';
 }
 /* readiness */
 function readyHtml(){
@@ -1298,8 +1364,13 @@ document.addEventListener('click',function(e){
     case 'cktab':ck.tab=el.getAttribute('data-t');renderCheckride();break;
     case 'mostart':moStart();renderCheckride();break;
     case 'morev':mo.revealed=true;renderCheckride();break;
-    case 'morate':{var kk=mo.queue[mo.idx];mo.rate[kk]=parseInt(el.getAttribute('data-r'),10);mo.idx++;mo.revealed=false;if(mo.idx>=mo.queue.length)moFinish();renderCheckride();break;}
-    case 'moend':mo=null;renderCheckride();break;
+    case 'moans':{var mc=getCard(mo.queue[mo.idx]);if(mc&&mc.followups&&mc.followups.length){mo.step='fu';mo.fi=0;}else mo.revealed=true;renderCheckride();break;}
+    case 'mofu':{var mc2=getCard(mo.queue[mo.idx]);if(mc2&&mo.fi+1<mc2.followups.length)mo.fi++;else mo.revealed=true;renderCheckride();break;}
+    case 'morepeat':moSpeak(true);break;
+    case 'morate':{var kk=mo.queue[mo.idx];mo.rate[kk]=parseInt(el.getAttribute('data-r'),10);
+      var sts=Array.prototype.slice.call(document.querySelectorAll('.mo_st')).filter(function(x){return x.checked;}).map(function(x){return parseInt(x.getAttribute('data-i'),10);});if(sts.length)mo.stumble[kk]=sts;
+      mo.step='ask';mo.fi=0;cancelSpeech();mo.idx++;mo.revealed=false;if(mo.idx>=mo.queue.length)moFinish();renderCheckride();break;}
+    case 'moend':mo=null;cancelSpeech();renderCheckride();break;
     case 'moagain':mo=null;renderCheckride();break;
     case 'mosend':{mo.queue.forEach(function(q){var r=mo.rate[q];if(r<3)S.progress[q]=schedule(S.progress[q],r===1?1:2);});mo.sent=true;save();toast('Added to your review schedule');renderCheckride();break;}
     case 'mostudy':{var wk=mo.queue.filter(function(q){return mo.rate[q]<3;});mo=null;startSession(wk,{title:'Mock oral review',cram:true});break;}
@@ -1339,7 +1410,7 @@ function mcOpts(ans,cands,r,n){
 function mcItem(o,r){var opts=shufR([o.ans].concat(o.dis),r);o.opts=opts;o.ai=opts.indexOf(o.ans);return o;}
 function clozeItems(r,max){
   var pool=[],items=[];
-  activeCards().forEach(function(c){
+  gcards().forEach(function(c){
     if(gopts.verified&&c.verify)return;
     var b=String(c.back||'');
     if(c.type==='cloze'){var bl=clozeBlanks(c.front);bl.forEach(function(x,i){pool.push({c:c,mode:'c',i:i,ans:x});});}
@@ -1371,7 +1442,7 @@ function numMatches(t){
 function fmtNum(v,dec,comma){var s=dec?v.toFixed(dec):String(Math.round(v));return comma?s.replace(/\B(?=(\d{3})+(?!\d))/g,','):s;}
 function numItems(r,max){
   var cards=[],items=[];
-  activeCards().forEach(function(c){
+  gcards().forEach(function(c){
     if(c.type==='cloze'||(gopts.verified&&c.verify))return;
     var b=plain(qb(c)),f=plain(c.front);
     if(b.indexOf('\n')>-1||b.length>170||f.length>220)return;
@@ -1467,7 +1538,7 @@ function ymd(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function stripStep(s){return s.replace(/\*\*/g,'').trim();}
 function orderPool(){
   var out=[];
-  activeCards().forEach(function(c){
+  gcards().forEach(function(c){
     if(c.type==='cloze'||(gopts.verified&&c.verify))return;
     var lines=String(c.back||'').split('\n');
     if(lines.some(function(l){return /^\s*IF\b/.test(l);}))return;
@@ -1671,7 +1742,8 @@ function dailyItems(){
 }
 function startDaily(){
   if(S.dc.date===today()){toast('Today\'s challenge is done. Come back tomorrow, or keep practising.');}
-  var it=dailyItems();startMc('daily',it,0,'Daily challenge');
+  var sa=gopts.area,st=gopts.type,it;gopts.area='';gopts.type='';try{it=dailyItems();}finally{gopts.area=sa;gopts.type=st;}
+  startMc('daily',it,0,'Daily challenge');
 }
 function startMix(){
   var r=Math.random,it=shufR(speedItems(r,4).concat(clozeItems(r,3),numItems(r,3),wxItems(r,2)),r);
@@ -1747,13 +1819,15 @@ function newSubject(){
 }
 
 /* ---------- games ---------- */
-var game=null,gopts={verified:true};
+var game=null,gopts={verified:true,area:'',type:''};
+function tyOf(c){return (c.type==='number'||c.type==='definition'||c.type==='procedure'||c.type==='cloze')?c.type:'concept';}
+function gcards(){return activeCards().filter(function(c){return (!gopts.area||areaOf(c)===gopts.area)&&(!gopts.type||tyOf(c)===gopts.type);});}
 function stopGame(){if(game){if(game.timer){clearInterval(game.timer);game.timer=null;}if(game.to){clearTimeout(game.to);game.to=null;}}}
 function resetGame(){stopGame();game=null;}
 function qb(c){return String(c.quick||c.back||'');}
-function shortBacks(){return activeCards().filter(function(c){if(c.type==='cloze')return false;var b=plain(qb(c));return b.length<=90&&b.indexOf('\n')<0;});}
+function shortBacks(){return gcards().filter(function(c){if(c.type==='cloze')return false;var b=plain(qb(c));return b.length<=90&&b.indexOf('\n')<0;});}
 function gamePool(kind){
-  return activeCards().filter(function(c){
+  return gcards().filter(function(c){
     if(gopts.verified&&c.verify)return false;
     if(c.type==='cloze')return false;
     var f=plain(c.front),b=plain(qb(c));
@@ -1768,8 +1842,17 @@ function distractors(c,dpool,n){
   same.concat(rest).forEach(function(x){if(out.length>=n)return;var t=plain(qb(x)).trim(),k=t.toLowerCase();if(seen[k])return;seen[k]=1;out.push(t);});
   return out;
 }
-function gameMark(c,wrong){ /* a miss goes back into the review schedule; a hit leaves it alone */
+function gmKeys(){
+  var gm=S.gmiss||{},ok={},out=[];allCards().forEach(function(c){ok[c.key]=1;});
+  Object.keys(gm).forEach(function(k){if(ok[k])out.push(k);});
+  return out.sort(function(a,b){return (gm[b].last||0)-(gm[a].last||0);});
+}
+function gameMark(c,wrong){ /* a miss goes back into the review schedule and the game-misses list; two later hits clear it */
   if(wrong)S.progress[c.key]=schedule(S.progress[c.key],1);
+  if(!S.gmiss)S.gmiss={};
+  var gm=S.gmiss;
+  if(wrong){var x=gm[c.key]||(gm[c.key]={n:0,ok:0});x.n++;x.ok=0;x.last=Date.now();}
+  else if(gm[c.key]){gm[c.key].ok++;if(gm[c.key].ok>=2)delete gm[c.key];}
   var t=today();S.history[t]=(S.history[t]||0)+1;
 }
 function bestOf(k){return (S.games&&S.games[k])||{};}
@@ -1781,6 +1864,12 @@ function renderGames(){
     var ps=gamePool('speed'),pm=gamePool('match'),sc=scenarioList();
     var all=activeCards().length,hidden=activeCards().filter(function(c){return c.verify;}).length;
     var h='<h1>Games</h1><p class="sub">Practice with your selected decks. A missed question goes back into your review schedule.</p>'+selbar(q);
+    var gar={};activeCards().forEach(function(c){gar[areaOf(c)]=(gar[areaOf(c)]||0)+1;});
+    if(gopts.area&&!gar[gopts.area])gopts.area='';
+    var gmk=gmKeys();
+    if(gmk.length)h+='<div class="card" style="padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:200px"><b>'+gmk.length+' card'+(gmk.length===1?'':'s')+' missed in games</b><div class="m" style="color:var(--muted);font-size:13px">Two correct answers in a row, or a good rating in study, clears a card from this list.</div></div><button class="btn small" data-act="gmstudy">Study them</button></div>';
+    h+='<div class="row" style="margin:0 0 12px"><div style="flex:1;min-width:160px"><label class="label" style="margin-top:0">Topic</label><select id="g_area"><option value="">All topics</option>'+Object.keys(gar).sort().map(function(a){return '<option value="'+esc(a)+'"'+(gopts.area===a?' selected':'')+'>'+esc(a)+' ('+gar[a]+')</option>';}).join('')+'</select></div><div style="flex:1;min-width:160px"><label class="label" style="margin-top:0">Card type</label><select id="g_type">'+[['','All types'],['number','Numbers and limits'],['definition','Definitions'],['procedure','Procedures'],['concept','Concepts'],['cloze','Fill in the blank']].map(function(t){return '<option value="'+t[0]+'"'+(gopts.type===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select></div></div>';
+    if(gopts.area||gopts.type)h+='<p class="legend" style="margin:-4px 0 12px">Filters apply to every game except the daily challenge, which stays the same for everyone.</p>';
     h+='<label class="check" style="margin:0 0 14px"><input type="checkbox" id="g_verified"'+(gopts.verified?' checked':'')+'> Skip cards that still need verification ('+hidden+' of '+all+')</label>';
     h+='<div class="grid gmenu">';
     h+='<div class="card gcard"><h3>Speed round</h3><p>60 seconds. Pick the right answer from four options. Streaks multiply your score.</p><div class="m">'+ps.length+' cards fit'+(bestOf('speed').best?' &middot; best '+bestOf('speed').best:'')+'</div><button class="btn" data-act="g_speed"'+(ps.length>=4?'':' disabled')+'>Play</button></div>';
@@ -2128,6 +2217,12 @@ document.addEventListener('change',function(e){
     view=view==='study'?'home':view;render();
   }else if(t.id==='g_verified'){
     gopts.verified=t.checked;renderGames();
+  }else if(t.id==='g_area'){
+    gopts.area=t.value;renderGames();
+  }else if(t.id==='g_type'){
+    gopts.type=t.value;renderGames();
+  }else if(t.id==='pl_date'){
+    var psb=subj();psb.examDate=t.value;save();toast('Saved');renderCheckride();
   }else if(t.id==='autodl'){
     S.settings.autoDownload=t.checked;save();toast(t.checked?'Automatic backup downloads on':'Automatic backup downloads off');
   }else if(t.getAttribute&&t.getAttribute('data-act')==='pk_tog'){
@@ -2290,6 +2385,15 @@ document.addEventListener('click',function(e){
     case 'g_num':startMc('num',numItems(Math.random,40),60000,'Number sprint');break;
     case 'g_wx':startMc('wx',wxItems(Math.random,8),0,'Weather decode');break;
     case 'g_daily':startDaily();break;
+    case 'plreview':{var pd=planData();startSession(pd.dueKeys,{title:'Reviews due'});break;}
+    case 'plnew':{var pd2=planData(),n2=Math.max(parseInt(el.getAttribute('data-n'),10)||0,5);
+      var cand2=Object.keys(pd2.areas).sort(function(a,b){var x=pd2.areas[a],y=pd2.areas[b];return (y.unseen.length/y.n)-(x.unseen.length/x.n);});
+      var ks=[];cand2.forEach(function(a){pd2.areas[a].unseen.forEach(function(k){if(ks.length<n2)ks.push(k);});});
+      startSession(ks,{title:'New cards, weakest topics first'});break;}
+    case 'plmock':{var pd3=planData(),nm3=Object.keys(pd3.areas).sort(function(a,b){var x=pd3.areas[a],y=pd3.areas[b];return (x.solid/x.n)-(y.solid/y.n);});moOpt.areas=nm3.slice(0,3);moOpt.focus=true;ck.tab='oral';mo=null;renderCheckride();break;}
+    case 'plarea':{var pa=planData().areas[el.getAttribute('data-a')];if(pa)startSession(pa.keys,{title:el.getAttribute('data-a'),cram:true});break;}
+    case 'plan':ck.tab='plan';view='checkride';render();break;
+    case 'gmstudy':startSession(gmKeys(),{title:'Missed in games',cram:true});break;
     case 'g_mix':startMix();break;
     case 'g_order':startSeq('order');break;
     case 'g_mnem':startSeq('mnem');break;
@@ -2658,6 +2762,7 @@ function dRate(r){
       S.progress[key]=schedule(S.progress[key],r);
       if(!existed){if(S.daily.date!==today())S.daily={date:today(),newCount:0};S.daily.newCount++;}
     }
+    if(r>=3&&S.gmiss&&S.gmiss[key])delete S.gmiss[key];
     var t=today();S.history[t]=(S.history[t]||0)+1;save();
     d.graded++;
     if(r===1){
