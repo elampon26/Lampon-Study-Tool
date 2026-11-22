@@ -892,7 +892,7 @@ function importDeck(obj,fname){
     else if(typeof c.front!=='string'||typeof c.back!=='string'||!c.front.trim()||!c.back.trim())throw new Error(fname+': card "'+c.id+'" needs front and back text.');
     if(seen[c.id])throw new Error(fname+': duplicate card id "'+c.id+'".');
     seen[c.id]=1;
-    cards.push({id:c.id,area:c.area||'',task:c.task||'',acs:c.acs||'',type:c.type||'',front:c.front,back:c.back,
+    cards.push({id:c.id,area:c.area||'',task:c.task||'',acs:c.acs||'',type:c.type||'',front:c.front,back:c.back,quick:typeof c.quick==='string'?c.quick.trim():'',
       followups:Array.isArray(c.followups)?c.followups.filter(function(x){return typeof x==='string';}):[],source:c.source||'',verify:!!c.verify,
       image:safeImg(c.image),page:typeof c.page==='string'?c.page:'',volatile:!!c.volatile,checked:/^\d{4}-\d{2}-\d{2}$/.test(c.checked||'')?c.checked:'',links:normLinks(c.links)});
   });
@@ -1005,6 +1005,7 @@ function saveEditor(key){
   if(pl.bad){$('e_adv').hidden=false;toast(pl.bad+' resource line'+(pl.bad===1?'':'s')+' not saved: links must start with http:// or https://');return;}
   var patch={page:$('e_page').value.trim(),links:pl.links,volatile:$('e_vol').checked,checked:$('e_chk').value,area:$('e_area').value.trim(),task:$('e_task').value.trim(),acs:$('e_acs').value.trim(),front:front,back:back,
     followups:$('e_fu').value.split('\n').map(function(x){return x.trim();}).filter(Boolean),source:$('e_src').value.trim(),verify:$('e_ver').checked,image:edImg};
+  if(key){var oc=getCard(key);if(oc&&oc.quick&&oc.back!==back)patch.quick='';}
   if(ty==='cloze')patch.type='cloze';else if(oldTy==='cloze')patch.type='';
   if(!key){
     var d=myDeck(S.currentSubject);patch.id=uid();patch.type=ty==='cloze'?'cloze':'';d.cards.push(patch);save();
@@ -1372,7 +1373,7 @@ function numItems(r,max){
   var cards=[],items=[];
   activeCards().forEach(function(c){
     if(c.type==='cloze'||(gopts.verified&&c.verify))return;
-    var b=plain(c.back),f=plain(c.front);
+    var b=plain(qb(c)),f=plain(c.front);
     if(b.indexOf('\n')>-1||b.length>170||f.length>220)return;
     var m=numMatches(b);if(m.length!==1)return;
     if(f.indexOf(m[0].n)>-1)return;
@@ -1400,7 +1401,7 @@ function speedItems(r,max){
   shufR(pool,r).forEach(function(c){
     if(out.length>=max)return;
     var d=distractors(c,dp,3);if(d.length<3)return;
-    out.push(mcItem({kind:'speed',key:c.key,ctx:areaOf(c),prompt:fmt(c.front),ans:plain(c.back).trim(),dis:d,why:fmt(c.back)},r));
+    out.push(mcItem({kind:'speed',key:c.key,ctx:areaOf(c),prompt:fmt(c.front),ans:plain(qb(c)).trim(),dis:d,why:fmt(c.back)},r));
   });
   return out;
 }
@@ -1749,21 +1750,22 @@ function newSubject(){
 var game=null,gopts={verified:true};
 function stopGame(){if(game){if(game.timer){clearInterval(game.timer);game.timer=null;}if(game.to){clearTimeout(game.to);game.to=null;}}}
 function resetGame(){stopGame();game=null;}
-function shortBacks(){return activeCards().filter(function(c){if(c.type==='cloze')return false;var b=plain(c.back);return b.length<=90&&b.indexOf('\n')<0;});}
+function qb(c){return String(c.quick||c.back||'');}
+function shortBacks(){return activeCards().filter(function(c){if(c.type==='cloze')return false;var b=plain(qb(c));return b.length<=90&&b.indexOf('\n')<0;});}
 function gamePool(kind){
   return activeCards().filter(function(c){
     if(gopts.verified&&c.verify)return false;
     if(c.type==='cloze')return false;
-    var f=plain(c.front),b=plain(c.back);
+    var f=plain(c.front),b=plain(qb(c));
     if(b.indexOf('\n')>-1)return false;
     if(kind==='match')return f.length<=90&&b.length<=60;
     return b.length<=90&&f.length<=240;
   });
 }
 function distractors(c,dpool,n){
-  var seen={},out=[];seen[plain(c.back).trim().toLowerCase()]=1;
+  var seen={},out=[];seen[plain(qb(c)).trim().toLowerCase()]=1;
   var same=shuffle(dpool.filter(function(x){return x.key!==c.key&&areaOf(x)===areaOf(c);})),rest=shuffle(dpool.filter(function(x){return x.key!==c.key&&areaOf(x)!==areaOf(c);}));
-  same.concat(rest).forEach(function(x){if(out.length>=n)return;var t=plain(x.back).trim(),k=t.toLowerCase();if(seen[k])return;seen[k]=1;out.push(t);});
+  same.concat(rest).forEach(function(x){if(out.length>=n)return;var t=plain(qb(x)).trim(),k=t.toLowerCase();if(seen[k])return;seen[k]=1;out.push(t);});
   return out;
 }
 function gameMark(c,wrong){ /* a miss goes back into the review schedule; a hit leaves it alone */
@@ -1820,8 +1822,8 @@ function speedQ(){
     var c=g.order[g.i%g.order.length];g.i++;
     var d=distractors(c,g.dp,3);
     if(d.length<3)continue;
-    var opts=shuffle([plain(c.back).trim()].concat(d));
-    g.q={c:c,opts:opts,ans:opts.indexOf(plain(c.back).trim()),pick:-1};return true;
+    var opts=shuffle([plain(qb(c)).trim()].concat(d));
+    g.q={c:c,opts:opts,ans:opts.indexOf(plain(qb(c)).trim()),pick:-1};return true;
   }
   return false;
 }
@@ -1886,7 +1888,7 @@ function startMatch(){
 function matchRound(){
   var g=game,pairs=[],seen={};
   while(g.pos<g.pool.length&&pairs.length<6){
-    var c=g.pool[g.pos++],k=plain(c.back).trim().toLowerCase();
+    var c=g.pool[g.pos++],k=plain(qb(c)).trim().toLowerCase();
     if(seen[k])continue;seen[k]=1;pairs.push(c);
   }
   if(pairs.length<3&&g.rounds>0){g.phase='end';return;}
@@ -1908,7 +1910,7 @@ function paintMatch(){
     h+='<button class="'+cls+'" data-act="g_pm" data-side="L" data-i="'+i+'"'+(g.done[i]?' disabled':'')+'>'+fmt(g.pairs[i].front)+'</button>';});
   h+='</div><div>';
   g.right.forEach(function(i){var cls='mbtn';if(g.done[i])cls+=' done';if(g.sel&&g.sel.side==='R'&&g.sel.i===i)cls+=' sel';if(g.flash&&g.flash.indexOf('R'+i)>-1)cls+=' bad';
-    h+='<button class="'+cls+'" data-act="g_pm" data-side="R" data-i="'+i+'"'+(g.done[i]?' disabled':'')+'>'+fmt(g.pairs[i].back)+'</button>';});
+    h+='<button class="'+cls+'" data-act="g_pm" data-side="R" data-i="'+i+'"'+(g.done[i]?' disabled':'')+'>'+fmt(qb(g.pairs[i]))+'</button>';});
   h+='</div></div><div class="hint">Click a question, then its answer (or the other way around).</div></div>';
   mainEl.innerHTML=h;
 }
@@ -2208,7 +2210,7 @@ document.addEventListener('click',function(e){
     case 'deldeck':{var id=el.getAttribute('data-d');if(confirm('Remove this deck? Progress, notes and edits for its cards are kept in case you re-import it.')){delete S.decks[id];save();render();}break;}
     case 'exportdeck':{
       var dk=S.decks[el.getAttribute('data-d')];
-      var cs=dk.cards.map(function(c){var m=applyOv(c,dk.id+':'+c.id);return{id:m.id,area:m.area,task:m.task,acs:m.acs,type:m.type,front:m.front,back:m.back,followups:m.followups,source:m.source,page:m.page||'',verify:!!m.verify,volatile:!!m.volatile,checked:m.checked||'',links:m.links||[],image:m.image||''};});
+      var cs=dk.cards.map(function(c){var m=applyOv(c,dk.id+':'+c.id);return{id:m.id,area:m.area,task:m.task,acs:m.acs,type:m.type,front:m.front,back:m.back,quick:m.quick||'',followups:m.followups,source:m.source,page:m.page||'',verify:!!m.verify,volatile:!!m.volatile,checked:m.checked||'',links:m.links||[],image:m.image||''};});
       download(slug(dk.title)+'.deck.json',{format:'checkride-deck',version:1,deck:{id:dk.id,title:dk.title,standard:dk.standard,subject:(S.subjects[dk.subject]||{}).name||''},cards:cs,scenarios:dk.scenarios||[],mnemonics:dk.mnemonics||[]});break;}
     case 'backup':doBackup(false);toast('Backup exported. Move it to a safe folder such as iCloud Drive.');renderSettings();break;
     case 'reset':if(confirm('Erase all subjects, decks, progress, and notes from this browser? This cannot be undone.')&&confirm('Really erase everything?')){S=migrate(defaults());save();session=null;view='home';render();}break;
